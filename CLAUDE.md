@@ -55,7 +55,7 @@ pelo usuário, compatível com um vault do Obsidian.
 - Os dados do usuário **nunca** vão para o repositório nem para o site: ficam na pasta
   local escolhida. Nada de analytics, rastreamento ou servidor próprio.
 - **Única exceção de rede:** `js/catalogo.js` consulta catálogos públicos (Google Books,
-  Open Library, iTunes, TVmaze, Jikan) **só quando o usuário clica** em "Buscar capa" ou
+  Open Library, IMDb, iTunes, TVmaze, AniList, Jikan) **só quando o usuário clica** em "Buscar capa" ou
   "Completar capas", enviando apenas o título. Capas são guardadas como URL no campo `capa`.
   Goodreads e Letterboxd não têm API aberta: a sincronização é por **importação do CSV**
   que esses sites exportam (Goodreads → Export Library; Letterboxd → Settings → Data).
@@ -178,6 +178,9 @@ programador: explicar em linguagem simples, sem jargão.
 - "Sincronizar com Goodreads/Letterboxd" = importar o CSV exportado + capas de catálogos
   abertos (não há API pública utilizável num site estático). Reimportar só completa campos
   vazios e avança status (quero-ler → lido); nunca apaga.
+- Busca de Entretenimento consulta **todas** as fontes ao mesmo tempo (AniList, IMDb, TVmaze,
+  MyAnimeList, iTunes), ordena por semelhança do título e categoria escolhida, e ao escolher
+  um resultado ajusta a categoria. Se uma fonte falhar, as outras seguram (aviso no diálogo).
 - Feriados estaduais/municipais não são automáticos: o usuário cria evento anual.
 - O usuário digita os dados no próprio app; a pasta escolhida serve para **salvar** (e reler
   o que foi salvo). Sugestão dada: criar `Documentos/Caderno` e, depois, abrir no Obsidian.

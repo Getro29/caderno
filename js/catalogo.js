@@ -60,49 +60,114 @@ App.catalogo = (() => {
     }));
   }
 
-  async function livros(q) {
-    const [g, o] = await Promise.allSettled([googleBooks(q), openLibrary(q)]);
-    const lista = [...(g.value || []), ...(o.value || [])];
-    if (!lista.length && g.status === 'rejected' && o.status === 'rejected') throw g.reason;
-    // Prefere resultados com capa, sem perder a ordem de relevância.
-    return lista.sort((a, b) => !!b.capa - !!a.capa).slice(0, 14);
-  }
-
-  async function filmes(q) {
-    const j = await pegarJSON('https://itunes.apple.com/search?media=movie&entity=movie&limit=12&country=br&lang=pt_br&term=' + encodeURIComponent(q));
+  async function filmesItunes(q) {
+    const j = await pegarJSON('https://itunes.apple.com/search?media=movie&entity=movie&limit=10&country=br&lang=pt_br&term=' + encodeURIComponent(q));
     return (j.results || []).map(r => ({
-      fonte: 'iTunes', titulo: r.trackName, autor: r.artistName || null, ano: ano(r.releaseDate),
+      fonte: 'iTunes', categoria: 'filme', titulo: r.trackName, autor: r.artistName || null, ano: ano(r.releaseDate),
       capa: r.artworkUrl100 ? r.artworkUrl100.replace(/\/\d+x\d+bb\./, '/600x900bb.') : null,
       sinopse: resumir(r.longDescription), generos: r.primaryGenreName ? [r.primaryGenreName] : [], link: r.trackViewUrl || null,
     }));
   }
 
-  async function series(q) {
+  // Sugestões públicas do IMDb: filmes e séries do mundo todo, com pôster.
+  async function imdb(q) {
+    const termo = App.slug(q).replace(/-/g, '_') || 'x';
+    const j = await pegarJSON(`https://v3.sg.media-imdb.com/suggestion/${termo[0]}/${encodeURIComponent(termo)}.json`);
+    const tipos = { movie: 'filme', tvMovie: 'filme', short: 'filme', tvSeries: 'serie', tvMiniSeries: 'serie' };
+    return (j.d || []).filter(d => tipos[d.qid] && d.l).map(d => ({
+      fonte: 'IMDb', categoria: tipos[d.qid], titulo: d.l, autor: d.s || null, ano: d.y || null,
+      capa: d.i?.imageUrl ? d.i.imageUrl.replace(/\._V1_.*\.(jpg|png)$/i, '._V1_SX600.$1') : null,
+      sinopse: null, generos: [], link: d.id ? `https://www.imdb.com/title/${d.id}/` : null,
+    }));
+  }
+
+  async function seriesTvmaze(q) {
     const j = await pegarJSON('https://api.tvmaze.com/search/shows?q=' + encodeURIComponent(q));
     return (j || []).map(({ show: s }) => ({
-      fonte: 'TVmaze', titulo: s.name, autor: s.network?.name || s.webChannel?.name || null, ano: ano(s.premiered),
+      fonte: 'TVmaze', categoria: s.type === 'Animation' && /japan/i.test(s.network?.country?.name || '') ? 'anime' : 'serie',
+      titulo: s.name, autor: s.network?.name || s.webChannel?.name || null, ano: ano(s.premiered),
       capa: https(s.image?.original || s.image?.medium), sinopse: resumir(semHTML(s.summary)),
       generos: s.genres || [], link: s.url || null,
     }));
   }
 
-  async function animes(q) {
-    const j = await pegarJSON('https://api.jikan.moe/v4/anime?limit=12&sfw=true&q=' + encodeURIComponent(q));
+  // AniList: o maior catálogo aberto de animes (GraphQL, sem chave).
+  async function animesAnilist(q) {
+    const consulta = `query ($q: String) { Page(perPage: 10) { media(search: $q, type: ANIME, sort: SEARCH_MATCH) {
+      title { romaji english native } startDate { year } episodes format genres description(asHtml: false) siteUrl
+      coverImage { extraLarge large } studios(isMain: true) { nodes { name } } } } }`;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    let j;
+    try {
+      const r = await fetch('https://graphql.anilist.co', {
+        method: 'POST', signal: ctrl.signal, referrerPolicy: 'no-referrer', credentials: 'omit',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ query: consulta, variables: { q } }),
+      });
+      if (!r.ok) throw new Error(`o serviço respondeu ${r.status}`);
+      j = await r.json();
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('o serviço demorou demais para responder');
+      if (e instanceof TypeError) throw new Error('sem conexão com o serviço');
+      throw e;
+    } finally { clearTimeout(t); }
+    return (j.data?.Page?.media || []).map(a => ({
+      fonte: 'AniList', categoria: 'anime', titulo: a.title?.romaji || a.title?.english, titulo_original: a.title?.native || null,
+      autor: (a.studios?.nodes || []).map(s => s.name).join(', ') || null, ano: a.startDate?.year || null,
+      episodios: a.episodes || null, capa: a.coverImage?.extraLarge || a.coverImage?.large || null,
+      sinopse: resumir(semHTML(a.description)), generos: a.genres || [], link: a.siteUrl || null,
+    }));
+  }
+
+  async function animesJikan(q) {
+    const j = await pegarJSON('https://api.jikan.moe/v4/anime?limit=10&sfw=true&q=' + encodeURIComponent(q));
     return (j.data || []).map(a => ({
-      fonte: 'MyAnimeList', titulo: a.title, titulo_original: a.title_japanese || null,
+      fonte: 'MyAnimeList', categoria: 'anime', titulo: a.title, titulo_original: a.title_japanese || null,
       autor: (a.studios || []).map(s => s.name).join(', ') || null, ano: a.year || ano(a.aired?.from),
       episodios: a.episodes || null, capa: a.images?.jpg?.large_image_url || a.images?.jpg?.image_url || null,
       sinopse: resumir(a.synopsis), generos: (a.genres || []).map(g => g.name), link: a.url || null,
     }));
   }
 
-  const PROVEDORES = {
-    livro: { buscar: livros, nome: 'Google Books e Open Library' },
-    filme: { buscar: filmes, nome: 'iTunes (catálogo de filmes da Apple)' },
-    serie: { buscar: series, nome: 'TVmaze' },
-    anime: { buscar: animes, nome: 'MyAnimeList (via Jikan)' },
+  // Cada tipo consulta várias fontes ao mesmo tempo; se uma falhar, as outras seguram.
+  const FONTES = {
+    livro: [['Google Books', googleBooks], ['Open Library', openLibrary]],
+    filme: [['IMDb', imdb], ['iTunes', filmesItunes]],
+    serie: [['IMDb', imdb], ['TVmaze', seriesTvmaze]],
+    anime: [['AniList', animesAnilist], ['MyAnimeList', animesJikan]],
   };
-  const buscar = (tipo, q) => PROVEDORES[tipo].buscar(q);
+  FONTES.entretenimento = [['AniList', animesAnilist], ['IMDb', imdb], ['TVmaze', seriesTvmaze], ['MyAnimeList', animesJikan], ['iTunes', filmesItunes]];
+  const NOMES = {
+    livro: 'Google Books e Open Library', filme: 'IMDb e iTunes', serie: 'IMDb e TVmaze',
+    anime: 'AniList e MyAnimeList', entretenimento: 'AniList, IMDb, TVmaze, MyAnimeList e iTunes',
+  };
+
+  const normal = t => App.slug(t).replace(/-/g, ' ');
+  // Junta as fontes, tira repetidos e ordena: título mais parecido primeiro, depois a categoria
+  // preferida, depois quem tem capa. Devolve também quais fontes falharam.
+  async function buscarDetalhado(tipo, q, preferida) {
+    const fontes = FONTES[tipo] || [];
+    const res = await Promise.allSettled(fontes.map(([, f]) => f(q)));
+    const falhas = fontes.filter((_, i) => res[i].status === 'rejected').map(([n], i) => n);
+    res.forEach((r, i) => { if (r.status === 'rejected') console.warn('catálogo falhou:', fontes[i][0], r.reason); });
+    const todos = res.flatMap((r, i) => (r.value || []).map((x, pos) => ({ ...x, ordem: pos * fontes.length + i })));
+    if (!todos.length && falhas.length === fontes.length) throw res[0].reason;
+    const alvo = normal(q);
+    const nota = x => {
+      const n = normal(x.titulo);
+      const parecido = n === alvo ? 0 : n.startsWith(alvo) ? 1 : n.includes(alvo) ? 2 : 3;
+      return parecido * 1000 + (preferida && x.categoria !== preferida ? 300 : 0) + (x.capa ? 0 : 100) + x.ordem;
+    };
+    const vistos = new Set();
+    const resultados = todos.sort((a, b) => nota(a) - nota(b)).filter(x => {
+      const k = [x.categoria || '', normal(x.titulo), x.ano || ''].join('|');
+      if (vistos.has(k)) return false;
+      vistos.add(k); return true;
+    }).slice(0, 20);
+    return { resultados, falhas };
+  }
+  const buscar = async (tipo, q, preferida) => (await buscarDetalhado(tipo, q, preferida)).resultados;
 
   // ---- capa: imagem com reserva (inicial do título) se não houver ou falhar ----
   function capa(url, titulo, classe = 'capa') {
@@ -114,32 +179,36 @@ App.catalogo = (() => {
   }
 
   // ---- diálogo de busca ----
-  function dialogoBusca(tipo, termo, aoEscolher) {
-    const p = PROVEDORES[tipo];
+  const ROTULO_CATEGORIA = { filme: 'Filme', serie: 'Série', anime: 'Anime' };
+  function dialogoBusca(tipo, termo, aoEscolher, preferida) {
     const q = el('input', { type: 'search', value: termo || '' });
     const lista = el('ul', { class: 'resultados', 'aria-live': 'polite' });
+    const aviso = el('p', { class: 'dica', role: 'status' });
     const executar = async () => {
       const t = q.value.trim();
       if (!t) { q.focus(); return; }
       lista.replaceChildren(el('li', { class: 'vazio', text: 'Buscando…' }));
       try {
-        const rs = await buscar(tipo, t);
+        const { resultados: rs, falhas } = await buscarDetalhado(tipo, t, preferida);
+        aviso.textContent = falhas.length ? `Sem resposta de: ${falhas.join(', ')}. Os outros catálogos foram usados.` : '';
         lista.replaceChildren(...(rs.length ? rs.map(r => el('li', {},
           el('button', { type: 'button', class: 'resultado', onclick: () => { dlg.close(); aoEscolher(r); } },
             capa(r.capa, r.titulo, 'capa-mini'),
             el('span', { class: 'resultado-info' },
               el('strong', { text: r.titulo }),
-              el('span', { class: 'dica', text: [r.autor, r.ano, r.fonte].filter(Boolean).join(' · ') }))))) :
+              el('span', { class: 'dica', text: [ROTULO_CATEGORIA[r.categoria], r.autor, r.ano, r.fonte].filter(Boolean).join(' · ') }))))) :
           [el('li', { class: 'vazio', text: 'Nada encontrado. Tente outro nome (o título original costuma funcionar melhor).' })]));
       } catch (e) {
-        lista.replaceChildren(el('li', { class: 'aviso', text: 'Não foi possível buscar: ' + e.message }));
+        aviso.textContent = '';
+        lista.replaceChildren(el('li', { class: 'aviso', text: 'Nenhum catálogo respondeu (' + e.message + '). Verifique a internet ou tente de novo em alguns segundos.' }));
       }
     };
     q.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); executar(); } });
     const dlg = App.dialogo('Buscar capa e informações', el('div', { class: 'busca-catalogo' },
       el('div', { class: 'campo-linha' }, el('div', { class: 'espaco' }, App.campo('Nome para buscar', q, { voz: false })),
         el('button', { type: 'button', class: 'alinhar-base', text: 'Buscar', onclick: executar })),
-      el('p', { class: 'dica', text: `A busca envia apenas o texto digitado para ${p.nome}. Escolha um resultado para preencher os campos vazios e a capa.` }),
+      el('p', { class: 'dica', text: `A busca envia apenas o texto digitado para ${NOMES[tipo]}. Escolha um resultado para preencher os campos vazios e a capa.` }),
+      aviso,
       lista), [el('span', { class: 'espaco' }), el('button', { type: 'button', class: 'secundario', text: 'Fechar', onclick: () => dlg.close() })]);
     q.focus();
     if (q.value.trim()) executar();
@@ -148,7 +217,7 @@ App.catalogo = (() => {
 
   // Bloco do formulário: prévia da capa, endereço editável e botão de busca no catálogo.
   // Também serve para colar o endereço da imagem copiado do Goodreads ou do Letterboxd.
-  function blocoCapa({ capa: inicial, titulo, tipo, termo, aoEscolher }) {
+  function blocoCapa({ capa: inicial, titulo, tipo, termo, aoEscolher, preferida = () => null }) {
     const url = el('input', { type: 'url', value: inicial || '', placeholder: 'https://…' });
     const previa = el('div', { class: 'previa-capa' });
     const atualizar = () => previa.replaceChildren(capa(url.value.trim() || null, titulo(), 'capa'));
@@ -161,7 +230,7 @@ App.catalogo = (() => {
           el('button', { type: 'button', class: 'secundario', onclick: () => dialogoBusca(tipo(), termo(), r => {
             if (r.capa) url.value = r.capa;
             atualizar(); aoEscolher(r);
-          }) }, App.icone('buscar'), ' Buscar capa e informações'),
+          }, preferida()) }, App.icone('buscar'), ' Buscar capa e informações'),
           el('button', { type: 'button', class: 'secundario', text: 'Remover capa', onclick: () => { url.value = ''; atualizar(); } })),
         el('p', { class: 'dica', text: 'Dica: no Goodreads ou no Letterboxd, clique com o botão direito na capa, escolha “Copiar endereço da imagem” e cole acima.' })));
     return { no, valor: () => url.value.trim() || null };
@@ -345,6 +414,6 @@ App.catalogo = (() => {
 
   return {
     buscar, capa, dialogoBusca, blocoCapa, completarCapas, mesclar, lerCSV, deGoodreads, deLetterboxd,
-    importarGoodreads, importarLetterboxd, provedores: PROVEDORES,
+    importarGoodreads, importarLetterboxd, fontes: FONTES,
   };
 })();

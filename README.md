@@ -8,7 +8,7 @@ leitura em voz alta.
 Tudo fica como arquivos `.md` (com propriedades YAML) **numa pasta do seu computador**, que
 pode ser o seu vault do Obsidian. Seus dados não vão para a internet: o site só entrega o programa.
 A única exceção é quando você clica em **Buscar capa** / **Completar capas**: aí só o título é
-enviado a catálogos públicos (Google Books, Open Library, iTunes, TVmaze, MyAnimeList).
+enviado a catálogos públicos (Google Books, Open Library, IMDb, iTunes, TVmaze, AniList, MyAnimeList).
 
 ## Goodreads e Letterboxd
 

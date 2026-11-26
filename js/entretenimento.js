@@ -47,9 +47,10 @@ App.entretenimento = (() => {
     };
     const preencher = (campo, v) => { if (v != null && v !== '' && !f[campo].value) f[campo].value = v; };
     const capa = App.catalogo.blocoCapa({
-      capa: m.capa, titulo: () => f.titulo.value, tipo: () => f.categoria.value,
-      termo: () => f.titulo.value,
+      capa: m.capa, titulo: () => f.titulo.value, tipo: () => 'entretenimento',
+      preferida: () => f.categoria.value, termo: () => f.titulo.value,
       aoEscolher: r => {
+        if (CATEGORIAS[r.categoria]) { f.categoria.value = r.categoria; serial(); }
         preencher('titulo', r.titulo); preencher('criador', r.autor); preencher('ano', r.ano); preencher('episodios', r.episodios);
         if (r.sinopse && !m.sinopse) extras.sinopse = r.sinopse;
         if (r.generos?.length && !App.lista(m.generos).length) extras.generos = r.generos;

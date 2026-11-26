@@ -15,7 +15,8 @@ const GOODREADS_CSV = [
   const page = await browser.newPage();
   const erros = [];
   page.on('pageerror', e => erros.push(e.message));
-  page.on('console', m => { if (m.type() === 'error') erros.push(m.text()); });
+  // O 503 do catálogo derrubado de propósito (abaixo) não conta como erro do app.
+  page.on('console', m => { if (m.type() === 'error' && !/status of 503/.test(m.text())) erros.push(m.text()); });
   page.on('dialog', d => d.accept());
 
   const json = body => ({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) });
@@ -25,9 +26,18 @@ const GOODREADS_CSV = [
     industryIdentifiers: [{ type: 'ISBN_13', identifier: '9788535910663' }], imageLinks: { thumbnail: 'http://capas.exemplo/dom.png' } } }] })));
   await page.route('https://openlibrary.org/**', r => r.fulfill(json({ docs: [] })));
   await page.route('https://covers.openlibrary.org/**', r => r.fulfill({ status: 404, body: '' }));
-  await page.route('https://api.jikan.moe/**', r => r.fulfill(json({ data: [{ title: 'Frieren', year: 2023, episodes: 28,
-    studios: [{ name: 'Madhouse' }], genres: [{ name: 'Fantasy' }], synopsis: 'Uma elfa maga.', url: 'https://myanimelist.net/anime/52991',
-    images: { jpg: { large_image_url: 'https://capas.exemplo/frieren.png' } } }] })));
+  // Entretenimento: Jikan fora do ar de propósito; os outros catálogos precisam dar conta.
+  await page.route('https://api.jikan.moe/**', r => r.fulfill({ status: 503, body: '' }));
+  await page.route('https://graphql.anilist.co/**', r => r.fulfill(json({ data: { Page: { media: [
+    { title: { romaji: 'Naruto', native: 'ナルト' }, startDate: { year: 2002 }, episodes: 220, genres: ['Action'], format: 'TV',
+      description: 'Um ninja <br>barulhento.', siteUrl: 'https://anilist.co/anime/20', coverImage: { extraLarge: 'https://capas.exemplo/naruto.png' },
+      studios: { nodes: [{ name: 'Pierrot' }] } },
+    { title: { romaji: 'Naruto: Shippuuden' }, startDate: { year: 2007 }, episodes: 500, genres: [], coverImage: {}, studios: { nodes: [] } }] } } })));
+  await page.route('https://v3.sg.media-imdb.com/**', r => r.fulfill(json({ d: [
+    { l: 'Naruto', y: 2002, qid: 'tvSeries', id: 'tt0409591', s: 'Junko Takeuchi', i: { imageUrl: 'https://capas.exemplo/naruto-imdb._V1_.jpg' } },
+    { l: 'Naruto Video Game', y: 2005, qid: 'videoGame', id: 'tt1' }] })));
+  await page.route('https://api.tvmaze.com/**', r => r.fulfill(json([])));
+  await page.route('https://itunes.apple.com/**', r => r.fulfill(json({ results: [] })));
   await page.route('https://capas.exemplo/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: png }));
   await page.addInitScript(() => { window.showDirectoryPicker = async () => navigator.storage.getDirectory(); });
   await page.goto(URL);
@@ -104,12 +114,15 @@ const GOODREADS_CSV = [
   // entretenimento
   await page.goto(URL + '#/entretenimento');
   await page.getByRole('button', { name: '+ Adicionar' }).click();
-  await page.getByLabel('Título').fill('Frieren');
-  await page.getByLabel('Categoria', { exact: true }).selectOption('anime');
+  await page.getByLabel('Título').fill('Naruto');
   await page.getByLabel('Status', { exact: true }).selectOption('visto');
   await page.getByLabel('Nota').selectOption('4.5');
   await page.getByRole('button', { name: 'Buscar capa e informações' }).click();
-  await page.getByRole('button', { name: /Frieren.*MyAnimeList/ }).click();
+  await page.getByText('Sem resposta de: MyAnimeList').waitFor();
+  const nomes = await page.locator('.resultado').allInnerTexts();
+  if (!/Anime/.test(nomes[0]) || nomes.some(n => /Video Game/.test(n))) throw new Error('ordem/filtro da busca errados: ' + nomes.join(' | '));
+  await page.getByRole('button', { name: /^Naruto Anime · Pierrot · 2002/ }).click();
+  if (await page.getByLabel('Categoria', { exact: true }).inputValue() !== 'anime') throw new Error('categoria não mudou para anime');
   await page.getByRole('button', { name: 'Salvar' }).click();
   await page.getByRole('button', { name: 'Vistos (1)' }).waitFor();
   await page.getByRole('button', { name: 'Importar do Letterboxd' }).click();
