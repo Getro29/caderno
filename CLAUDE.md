@@ -129,3 +129,37 @@ níveis e missões não devem ser implementados.
 - Verificar no Obsidian que os arquivos abrem com as propriedades corretas.
 - Testes automatizados: `python3 -m http.server 8123` e depois `node tests/e2e.js`
   (Playwright fora do app, sem afetar a regra de zero dependências do app em si).
+
+## Estado do projeto (contexto para novas sessões)
+
+**Publicado:** https://getro29.github.io/caderno/ (GitHub Pages, branch `main`, raiz).
+Repositório: https://github.com/Getro29/caderno. O usuário fala português e não é
+programador: explicar em linguagem simples, sem jargão.
+
+**Já feito (v1):**
+- Entrada (captura rápida → vira tarefa ou nota), Tarefas (lista agrupada por prazo e
+  quadro a-fazer/fazendo/feita), Notas (por matéria, editor Markdown com pré-visualização,
+  revisão espaçada), Livros (estantes lendo/quero-ler/lidos, estrelas, resenha), Início
+  (prazos da semana, notas a revisar, lendo agora, contador da Entrada).
+- Ditado 🎤 em todos os campos de texto e leitura 🔊 de notas e resenhas (pt-BR).
+- Preservação de YAML desconhecido, `.lixeira/`, detecção de edição externa (Obsidian).
+- Teste e2e passando (`tests/e2e.js`). Visual atual é **provisório**.
+
+**Decisões tomadas:**
+- Só Chrome/Edge no computador por enquanto.
+- O usuário digita os dados no próprio app; a pasta escolhida serve para **salvar** (e reler
+  o que foi salvo). Sugestão dada: criar `Documentos/Caderno` e, depois, abrir no Obsidian.
+- Repositório público (exigência do GitHub Pages gratuito); dados nunca vão para o repo.
+- Domínio próprio: o usuário pretende comprar; configura em Settings → Pages → Custom domain.
+
+**Pendente / próximos passos:**
+1. Definir **gamificação** (XP por área, níveis, missões diárias) **junto com a direção de
+   arte** — decidir com o usuário antes de implementar.
+2. Direção de arte definitiva (substituir o estilo provisório de `css/estilo.css`).
+3. Talvez: deixar a tela de boas-vindas mais clara sobre para que serve a pasta
+   (o usuário teve essa dúvida).
+4. Futuro: versão celular + assistente de IA ("mente do Caderno") — ver seção acima.
+
+**Limitações do ambiente de nuvem do Claude:** o `gh` não consegue criar repositórios nem
+mexer nas configurações do GitHub Pages; isso o usuário faz pelo site do GitHub.
+Commits: autor `Getro29 <Getro29@users.noreply.github.com>`.
