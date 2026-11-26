@@ -2,7 +2,7 @@
 // Único ponto de acesso aos arquivos. Interface genérica (listar, ler, gravar, criar, mover,
 // moverParaLixeira) para que um adaptador futuro (ex.: sincronização no celular) a substitua.
 App.store = (() => {
-  const PASTAS = ['Entrada', 'Tarefas', 'Notas', 'Livros', 'Caderno'];
+  const PASTAS = ['Entrada', 'Tarefas', 'Notas', 'Livros', 'Entretenimento', 'Calendario', 'Arte', 'Caderno'];
   const cache = new Map(); // caminho -> doc
   let raiz = null;
 
@@ -171,17 +171,35 @@ App.store = (() => {
     return novo;
   }
 
-  async function moverParaLixeira(caminho) {
-    const texto = await (await (await arquivo(caminho)).getFile()).text();
+  async function moverParaLixeira(caminho, { avisar = true } = {}) {
+    const conteudo = await (await arquivo(caminho)).getFile();
     const carimbo = App.agoraISO().replace(/[-:T]/g, '');
     const destino = `.lixeira/${carimbo}-${caminho.replace(/\//g, '__')}`;
-    await escrever(destino, texto);
+    await escrever(destino, conteudo);
     await remover(caminho);
-    App.emit('dados');
+    liberarUrl(caminho);
+    if (avisar) App.emit('dados');
+  }
+
+  // ---- arquivos binários (imagens da galeria de Arte) ----
+  const urls = new Map(); // caminho -> object URL
+  function liberarUrl(caminho) {
+    if (urls.has(caminho)) { URL.revokeObjectURL(urls.get(caminho)); urls.delete(caminho); }
+  }
+  async function gravarBinario(pasta, base, extensao, blob) {
+    let c = `${pasta}/${base}.${extensao}`; let n = 2;
+    while (await existe(c)) c = `${pasta}/${base}-${n++}.${extensao}`;
+    await escrever(c, blob);
+    return c;
+  }
+  async function urlArquivo(caminho) {
+    if (!urls.has(caminho)) urls.set(caminho, URL.createObjectURL(await (await arquivo(caminho)).getFile()));
+    return urls.get(caminho);
   }
 
   return {
     suportado, escolherPasta, pastaSalva, reconectar, conectado, nomePasta,
     carregarTudo, listar, obter, ler, gravar, criar, mover, moverParaLixeira,
+    existe, gravarBinario, urlArquivo,
   };
 })();

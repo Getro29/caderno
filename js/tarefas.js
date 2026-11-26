@@ -34,7 +34,7 @@ App.tarefas = (() => {
     const m = doc.meta; const out = [];
     if (m.prazo && m.status !== 'feita') {
       const n = App.diasAte(m.prazo);
-      out.push(selo('⏰ ' + App.descreverPrazo(m.prazo), n < 0 ? 'perigo' : n <= 1 ? 'alerta' : ''));
+      out.push(selo(App.descreverPrazo(m.prazo), n < 0 ? 'perigo' : n <= 1 ? 'alerta' : ''));
     }
     if (m.prioridade === 'alta') out.push(selo('Alta', 'perigo'));
     if (m.area) out.push(selo(m.area));
@@ -50,7 +50,7 @@ App.tarefas = (() => {
       el('div', { class: 'tarefa-info' },
         el('label', { for: id, class: 'tarefa-titulo', text: titulo(doc) }),
         el('div', { class: 'selos' }, doc.meta.status === 'fazendo' ? selo('Fazendo', 'info') : null, selosPrazo(doc))),
-      el('button', { type: 'button', class: 'icone', 'aria-label': 'Editar ' + titulo(doc), text: '✎', onclick: () => editar(doc) }));
+      el('button', { type: 'button', class: 'icone', 'aria-label': 'Editar ' + titulo(doc), onclick: () => editar(doc) }, App.icone('lapis')));
   }
 
   function grupos(docs) {
@@ -91,8 +91,8 @@ App.tarefas = (() => {
           el('button', { type: 'button', class: 'cartao-titulo', text: titulo(d), onclick: () => editar(d) }),
           el('div', { class: 'selos' }, selosPrazo(d)),
           el('div', { class: 'cartao-acoes' },
-            i > 0 ? el('button', { type: 'button', class: 'icone', 'aria-label': `Mover para ${STATUS[ordem[i - 1]]}`, text: '◀', onclick: () => mudarStatus(d, ordem[i - 1]) }) : null,
-            i < ordem.length - 1 ? el('button', { type: 'button', class: 'icone', 'aria-label': `Mover para ${STATUS[ordem[i + 1]]}`, text: '▶', onclick: () => mudarStatus(d, ordem[i + 1]) }) : null)))));
+            i > 0 ? el('button', { type: 'button', class: 'icone', 'aria-label': `Mover para ${STATUS[ordem[i - 1]]}`, onclick: () => mudarStatus(d, ordem[i - 1]) }, App.icone('esquerda')) : null,
+            i < ordem.length - 1 ? el('button', { type: 'button', class: 'icone', 'aria-label': `Mover para ${STATUS[ordem[i + 1]]}`, onclick: () => mudarStatus(d, ordem[i + 1]) }, App.icone('direita')) : null)))));
     }));
   }
 

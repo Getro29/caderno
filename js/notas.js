@@ -117,7 +117,7 @@ App.notas = (() => {
         el('div', { class: 'acoes' },
           el('button', { type: 'button', text: 'Editar', onclick: () => editar(doc) }),
           App.voz.botaoLeitura(() => `${titulo(doc)}. ${App.markdown.textoPuro(doc.corpo)}`),
-          el('button', { type: 'button', class: 'secundario', text: '✓ Marquei como revisada', onclick: () => marcarRevisada(doc) }))),
+          el('button', { type: 'button', class: 'secundario', text: 'Marquei como revisada', onclick: () => marcarRevisada(doc) }))),
       doc.erro ? el('p', { class: 'aviso', text: 'Este arquivo tem um cabeçalho YAML que o Caderno não entende; ele só pode ser editado no Obsidian.' }) : null,
       conteudo);
   }
@@ -157,7 +157,7 @@ App.notas = (() => {
       el('header', { class: 'cabecalho-tela' },
         el('h1', { text: 'Notas de estudo' }),
         el('button', { type: 'button', text: '+ Nova nota', onclick: () => editar(null) })),
-      rev ? el('p', { class: 'aviso suave', text: `📚 ${rev} nota(s) para revisar hoje.` }) : null,
+      rev ? el('p', { class: 'aviso suave', text: `${rev} nota(s) para revisar hoje.` }) : null,
       chips,
       el('div', { class: 'duas-colunas' },
         el('div', { class: 'coluna-lista' },

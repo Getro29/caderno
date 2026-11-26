@@ -38,12 +38,12 @@ App.entrada = (() => {
         el('p', { class: 'captura-texto', text: d.corpo.trim() }),
         el('span', { class: 'dica', text: App.fmtData(d.meta.criado) })),
       el('div', { class: 'acoes' },
-        el('button', { type: 'button', class: 'secundario', text: '→ Tarefa',
+        el('button', { type: 'button', class: 'secundario', text: 'Virar tarefa',
           onclick: () => App.tarefas.editar(null, { titulo: primeiraLinha(d), corpo: d.corpo.trim() }, () => descartar(d)) }),
-        el('button', { type: 'button', class: 'secundario', text: '→ Nota',
+        el('button', { type: 'button', class: 'secundario', text: 'Virar nota',
           onclick: () => App.notas.editar(null, { titulo: primeiraLinha(d), corpo: d.corpo.trim() }, () => descartar(d)) }),
-        el('button', { type: 'button', class: 'icone', 'aria-label': 'Descartar', title: 'Descartar (vai para .lixeira/)', text: '🗑',
-          onclick: () => { if (App.confirmar('Mover esta captura para a lixeira?')) descartar(d); } })));
+        el('button', { type: 'button', class: 'icone', 'aria-label': 'Descartar', title: 'Descartar (vai para .lixeira/)',
+          onclick: () => { if (App.confirmar('Mover esta captura para a lixeira?')) descartar(d); } }, App.icone('lixeira'))));
   }
 
   function render(container) {
@@ -52,7 +52,7 @@ App.entrada = (() => {
       el('header', { class: 'cabecalho-tela' }, el('h1', { text: 'Entrada' })),
       el('p', { class: 'resumo', text: 'Jogue aqui o que vier à cabeça. Depois transforme em tarefa ou nota.' }),
       formulario(),
-      docs.length ? el('ul', { class: 'lista-capturas' }, docs.map(item)) : el('p', { class: 'vazio', text: 'Entrada vazia. 🎉' }));
+      docs.length ? el('ul', { class: 'lista-capturas' }, docs.map(item)) : el('p', { class: 'vazio', text: 'Entrada vazia.' }));
   }
 
   return { render, formulario, todas };

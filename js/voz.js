@@ -63,8 +63,8 @@ App.voz = (() => {
     if (!SR) return null;
     const b = App.el('button', {
       type: 'button', class: 'icone mic', title: 'Ditar por voz', 'aria-label': 'Ditar por voz', 'aria-pressed': 'false',
-      text: '🎤', onclick: () => ditar(campo, b),
-    });
+      onclick: () => ditar(campo, b),
+    }, App.icone('mic'));
     return b;
   }
 
@@ -86,9 +86,11 @@ App.voz = (() => {
     return out;
   }
 
+  const rotular = (b, icone, texto) => b.replaceChildren(App.icone(icone), ' ' + texto);
+
   function pararLeitura() {
     if (sintese) sintese.cancel();
-    if (botaoLendo) { botaoLendo.textContent = '🔊 Ouvir'; botaoLendo.setAttribute('aria-pressed', 'false'); }
+    if (botaoLendo) { rotular(botaoLendo, 'som', 'Ouvir'); botaoLendo.setAttribute('aria-pressed', 'false'); }
     botaoLendo = null;
   }
 
@@ -105,15 +107,16 @@ App.voz = (() => {
       if (i === partes.length - 1) u.onend = () => { if (botaoLendo === botao) pararLeitura(); };
       sintese.speak(u);
     });
-    if (botao) { botaoLendo = botao; botao.textContent = '⏹ Parar'; botao.setAttribute('aria-pressed', 'true'); }
+    if (botao) { botaoLendo = botao; rotular(botao, 'parar', 'Parar'); botao.setAttribute('aria-pressed', 'true'); }
   }
 
   function botaoLeitura(obterTexto) {
     if (!sintese) return null;
     const b = App.el('button', {
-      type: 'button', class: 'secundario', 'aria-pressed': 'false', text: '🔊 Ouvir',
+      type: 'button', class: 'secundario', 'aria-pressed': 'false',
       onclick: () => ler(obterTexto(), b),
     });
+    rotular(b, 'som', 'Ouvir');
     return b;
   }
 

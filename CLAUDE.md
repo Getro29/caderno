@@ -1,8 +1,8 @@
 # CLAUDE.md — Caderno (substituto local do Notion)
 
 App web estático, hospedado no **GitHub Pages** (domínio próprio depois), que roda
-**no navegador do usuário** para organizar tarefas, notas de estudo, livros lidos e um painel
-gamificado. Os dados vivem como arquivos `.md` com frontmatter YAML numa pasta escolhida
+**no navegador do usuário** para organizar tarefas, calendário, notas de estudo, leitura,
+entretenimento (filmes/séries/animes), uma galeria de arte e um painel gamificado. Os dados vivem como arquivos `.md` com frontmatter YAML numa pasta escolhida
 pelo usuário, compatível com um vault do Obsidian.
 
 ## Regras inegociáveis
@@ -30,7 +30,9 @@ pelo usuário, compatível com um vault do Obsidian.
    - `SpeechRecognition`/`webkitSpeechRecognition` → esconder o botão de ditado se ausente.
      Avisar que o ditado do Chrome envia áudio aos servidores do Google (precisa de internet).
    - `speechSynthesis` → esconder "ler em voz alta" se ausente.
-8. **Acessibilidade.** HTML semântico, `<button>` para ações, `label` em todo campo,
+8. **Sem emojis na interface.** Ícones são SVG de traço via `App.icone(nome)` (decorativos,
+   com `aria-label` no botão). Símbolos tipográficos (★ ½ ☆ …) podem.
+9. **Acessibilidade.** HTML semântico, `<button>` para ações, `label` em todo campo,
    foco visível, navegação completa por teclado, contraste AA, tema claro/escuro.
 
 ## Alvo atual e direção futura
@@ -51,7 +53,12 @@ pelo usuário, compatível com um vault do Obsidian.
 
 - Repositório GitHub, publicado pelo GitHub Pages a partir da branch `main` (raiz).
 - Os dados do usuário **nunca** vão para o repositório nem para o site: ficam na pasta
-  local escolhida. Nada de analytics, rastreamento ou chamadas de rede próprias.
+  local escolhida. Nada de analytics, rastreamento ou servidor próprio.
+- **Única exceção de rede:** `js/catalogo.js` consulta catálogos públicos (Google Books,
+  Open Library, iTunes, TVmaze, Jikan) **só quando o usuário clica** em "Buscar capa" ou
+  "Completar capas", enviando apenas o título. Capas são guardadas como URL no campo `capa`.
+  Goodreads e Letterboxd não têm API aberta: a sincronização é por **importação do CSV**
+  que esses sites exportam (Goodreads → Export Library; Letterboxd → Settings → Data).
 - Usar só caminhos relativos (`./css/...`) para funcionar tanto em `usuario.github.io/caderno`
   quanto num domínio próprio.
 
@@ -70,7 +77,11 @@ js/
   entrada.js          # captura rápida (Entrada/)
   tarefas.js          # módulo Tarefas e Prazos
   notas.js            # módulo Notas de Estudo
-  livros.js           # módulo Livros e Resenhas
+  catalogo.js         # busca de capas/dados em catálogos públicos + importação CSV Goodreads/Letterboxd
+  livros.js           # página "Leitura" (App.livros; arquivos em Livros/, rota #/leitura)
+  entretenimento.js   # filmes, séries e animes
+  calendario.js       # mês, eventos, feriados nacionais e datas comemorativas (calculados localmente)
+  arte.js             # galeria de referências (imagens em Arte/imagens/)
   painel.js           # Início: visão do dia (gamificação entra aqui depois)
   main.js             # roteamento por hash (#/tarefas…), inicialização
 tests/e2e.js          # teste Playwright (usa OPFS no lugar da pasta real)
@@ -86,6 +97,9 @@ Nenhum módulo acessa a File System Access API diretamente fora de `store.js`.
   Tarefas/<slug>.md
   Notas/<materia>/<slug>.md
   Livros/<slug>.md
+  Entretenimento/<slug>.md
+  Calendario/<AAAA-MM-DD>-<slug>.md
+  Arte/<slug>.md + Arte/imagens/<slug>.<ext>
   Entrada/<data-hora>.md      # capturas rápidas
   Caderno/progresso.md        # estado da gamificação (XP, nível, histórico)
   Caderno/missoes/AAAA-MM-DD.md
@@ -100,7 +114,16 @@ Campos obrigatórios por tipo (`tipo` sempre presente para identificar o arquivo
   (revisão espaçada: intervalos de 1, 3, 7, 14, 30, 60, 120 dias)
 - **entrada:** `tipo, criado (AAAA-MM-DDTHH:MM), tags` — o texto capturado é o corpo.
 - **livro:** `tipo, titulo, autor, status (quero-ler|lendo|lido), nota (0–5), paginas,
-  inicio, fim, tags` — a resenha é o corpo Markdown.
+  inicio, fim, tags` + opcionais `ano, isbn, capa (URL), sinopse, generos, goodreads_id`
+  — a resenha é o corpo Markdown.
+- **entretenimento:** `tipo, titulo, categoria (filme|serie|anime), status (quero-ver|vendo|visto),
+  nota (0–5, aceita meia estrela), criador, ano, temporadas, episodios, inicio, fim, capa, tags`
+  + opcionais `sinopse, generos, link, titulo_original, letterboxd_uri` — resenha no corpo.
+- **evento:** `tipo, titulo, data, hora, hora_fim, repetir (nao|semanal|mensal|anual), local,
+  tags, criado` — descrição no corpo. Feriados **não** são arquivos: são calculados.
+- **arte:** `tipo, titulo, artista, ano, colecao, imagem (caminho na pasta) ou imagem_url,
+  fonte, criado, tags` — corpo começa com `![[arquivo]]` (para o Obsidian) e segue com anotações.
+  Excluir move o `.md` **e** a imagem para `.lixeira/`.
 - **progresso:** `tipo, xp_total, xp_por_area {produtividade, estudos, leitura}, sequencia_dias,
   ultimo_dia_ativo`
 
@@ -137,6 +160,11 @@ Repositório: https://github.com/Getro29/caderno. O usuário fala português e n
 programador: explicar em linguagem simples, sem jargão.
 
 **Já feito (v1):**
+- Cabeçalho de navegação no topo; sem emojis (ícones SVG).
+- Calendário (mês com feriados nacionais, pontos facultativos e datas comemorativas,
+  eventos com repetição, prazos das tarefas), Entretenimento (filmes/séries/animes, capas via
+  catálogos, importação Letterboxd), Arte (galeria; enviar, arrastar, colar ou link),
+  Leitura (antiga "Livros": capas, importação Goodreads).
 - Entrada (captura rápida → vira tarefa ou nota), Tarefas (lista agrupada por prazo e
   quadro a-fazer/fazendo/feita), Notas (por matéria, editor Markdown com pré-visualização,
   revisão espaçada), Livros (estantes lendo/quero-ler/lidos, estrelas, resenha), Início
@@ -147,6 +175,10 @@ programador: explicar em linguagem simples, sem jargão.
 
 **Decisões tomadas:**
 - Só Chrome/Edge no computador por enquanto.
+- "Sincronizar com Goodreads/Letterboxd" = importar o CSV exportado + capas de catálogos
+  abertos (não há API pública utilizável num site estático). Reimportar só completa campos
+  vazios e avança status (quero-ler → lido); nunca apaga.
+- Feriados estaduais/municipais não são automáticos: o usuário cria evento anual.
 - O usuário digita os dados no próprio app; a pasta escolhida serve para **salvar** (e reler
   o que foi salvo). Sugestão dada: criar `Documentos/Caderno` e, depois, abrir no Obsidian.
 - Repositório público (exigência do GitHub Pages gratuito); dados nunca vão para o repo.

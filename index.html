@@ -3,21 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Caderno: tarefas, notas de estudo e livros em arquivos Markdown no seu computador.">
+  <meta name="description" content="Caderno: tarefas, calendário, notas de estudo, leitura, entretenimento e arte em arquivos Markdown no seu computador.">
   <title>Caderno</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📓</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='18' y='8' width='64' height='84' rx='8' fill='%232f5bd3'/><rect x='30' y='26' width='40' height='6' rx='3' fill='white'/><rect x='30' y='40' width='28' height='6' rx='3' fill='white'/></svg>">
   <link rel="stylesheet" href="./css/estilo.css">
 </head>
 <body>
   <a class="pular" href="#principal">Pular para o conteúdo</a>
-  <div class="layout">
-    <aside class="lateral">
-      <div class="marca"><span aria-hidden="true">📓</span> Caderno</div>
-      <nav id="nav" aria-label="Seções"></nav>
-      <div id="info-pasta" class="info-pasta"></div>
-    </aside>
-    <main id="principal" tabindex="-1"></main>
-  </div>
+  <header class="topo">
+    <a class="marca" href="#/inicio">Caderno</a>
+    <nav id="nav" aria-label="Seções"></nav>
+    <div id="info-pasta" class="info-pasta"></div>
+  </header>
+  <main id="principal" tabindex="-1"></main>
 
   <script src="./js/app.js"></script>
   <script src="./js/yaml.js"></script>
@@ -28,7 +26,11 @@
   <script src="./js/entrada.js"></script>
   <script src="./js/tarefas.js"></script>
   <script src="./js/notas.js"></script>
+  <script src="./js/catalogo.js"></script>
   <script src="./js/livros.js"></script>
+  <script src="./js/entretenimento.js"></script>
+  <script src="./js/calendario.js"></script>
+  <script src="./js/arte.js"></script>
   <script src="./js/painel.js"></script>
   <script src="./js/main.js"></script>
 </body>

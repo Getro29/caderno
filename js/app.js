@@ -2,6 +2,21 @@
 // Núcleo: cria window.App e utilitários compartilhados por todos os módulos.
 window.App = (() => {
   const ouvintes = {};
+  const ICONES = {
+    fechar: 'M6 6l12 12|M18 6L6 18',
+    mic: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z|M5 11a7 7 0 0 0 14 0|M12 18v3',
+    som: 'M4 9v6h4l5 4V5L8 9H4z|M16 9a4 4 0 0 1 0 6|M18.5 6.5a8 8 0 0 1 0 11',
+    parar: 'M7 7h10v10H7z',
+    lixeira: 'M4 7h16|M9 7V4h6v3|M6 7l1 13h10l1-13',
+    recarregar: 'M20 12a8 8 0 1 1-2.3-5.7|M20 4v5h-5',
+    lapis: 'M4 20h4L19 9l-4-4L4 16v4z|M13 7l4 4',
+    esquerda: 'M15 6l-6 6 6 6',
+    direita: 'M9 6l6 6-6 6',
+    relogio: 'M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z|M12 7v5l3 2',
+    buscar: 'M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z|M20 20l-4-4',
+    imagem: 'M4 5h16v14H4z|M4 16l5-5 4 4 2-2 5 5|M15 9h.01',
+    mais: 'M12 5v14|M5 12h14',
+  };
 
   const App = {
     on(evento, fn) { (ouvintes[evento] ||= []).push(fn); },
@@ -64,6 +79,13 @@ window.App = (() => {
       return App.fmtData(iso);
     },
 
+    // Estrelas de 0 a 5, aceitando meia estrela (notas do Letterboxd).
+    estrelas(n) {
+      const v = Math.max(0, Math.min(5, Math.round((Number(n) || 0) * 2) / 2));
+      const cheias = Math.floor(v);
+      return '★'.repeat(cheias) + (v % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(v));
+    },
+
     tagsDeTexto(texto) {
       return String(texto || '').split(/[,;]/).map(t => t.trim().replace(/^#/, '').replace(/\s+/g, '-'))
         .filter(Boolean);
@@ -118,13 +140,25 @@ window.App = (() => {
       const dlg = App.el('dialog', { class: 'dialogo', 'aria-label': titulo },
         App.el('form', { method: 'dialog', class: 'dialogo-form', onsubmit: e => e.preventDefault() },
           App.el('header', {}, App.el('h2', { text: titulo }),
-            App.el('button', { type: 'button', class: 'icone', 'aria-label': 'Fechar', text: '✕', onclick: () => dlg.close() })),
+            App.el('button', { type: 'button', class: 'icone', 'aria-label': 'Fechar', onclick: () => dlg.close() }, App.icone('fechar'))),
           App.el('div', { class: 'dialogo-corpo' }, corpo),
           App.el('footer', {}, acoes)));
       dlg.addEventListener('close', () => { App.voz?.pararTudo(); dlg.remove(); });
       document.body.append(dlg);
       dlg.showModal();
       return dlg;
+    },
+
+    // Ícones em SVG (traço), no lugar de emojis. Decorativos: o botão leva aria-label.
+    icone(nome) {
+      const NS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('class', 'ico'); svg.setAttribute('focusable', 'false');
+      for (const d of (ICONES[nome] || '').split('|')) {
+        const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); svg.append(p);
+      }
+      return svg;
     },
 
     confirmar(msg) { return window.confirm(msg); },

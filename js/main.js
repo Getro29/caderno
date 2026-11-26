@@ -3,23 +3,28 @@
 (() => {
   const { el } = App;
   const ROTAS = {
-    inicio: { titulo: 'Início', icone: '🏠', modulo: () => App.painel },
-    entrada: { titulo: 'Entrada', icone: '📥', modulo: () => App.entrada },
-    tarefas: { titulo: 'Tarefas', icone: '✅', modulo: () => App.tarefas },
-    notas: { titulo: 'Notas', icone: '📝', modulo: () => App.notas },
-    livros: { titulo: 'Livros', icone: '📚', modulo: () => App.livros },
+    inicio: { titulo: 'Início', modulo: () => App.painel },
+    entrada: { titulo: 'Entrada', modulo: () => App.entrada },
+    tarefas: { titulo: 'Tarefas', modulo: () => App.tarefas },
+    calendario: { titulo: 'Calendário', modulo: () => App.calendario },
+    notas: { titulo: 'Notas', modulo: () => App.notas },
+    leitura: { titulo: 'Leitura', modulo: () => App.livros },
+    entretenimento: { titulo: 'Entretenimento', modulo: () => App.entretenimento },
+    arte: { titulo: 'Arte', modulo: () => App.arte },
   };
+  const APELIDOS = { livros: 'leitura' }; // endereços antigos continuam funcionando
   const principal = document.getElementById('principal');
   const nav = document.getElementById('nav');
   const infoPasta = document.getElementById('info-pasta');
 
-  const rotaAtual = () => { const r = location.hash.replace(/^#\/?/, ''); return ROTAS[r] ? r : 'inicio'; };
+  const rotaAtual = () => { const h = location.hash.replace(/^#\/?/, ''); const r = APELIDOS[h] || h; return ROTAS[r] ? r : 'inicio'; };
 
   function desenharNav() {
     const atual = rotaAtual();
     nav.replaceChildren(...Object.entries(ROTAS).map(([id, r]) => el('a', {
       href: '#/' + id, 'aria-current': id === atual ? 'page' : null,
-    }, el('span', { 'aria-hidden': 'true', text: r.icone }), ' ', r.titulo)));
+      text: r.titulo,
+    })));
   }
 
   function renderizar() {
@@ -29,9 +34,9 @@
     document.title = `${r.titulo} · Caderno`;
     r.modulo().render(principal);
     infoPasta.replaceChildren(
-      el('span', { title: 'Pasta conectada', text: '📁 ' + App.store.nomePasta() }),
-      el('button', { type: 'button', class: 'icone', title: 'Recarregar arquivos do disco', 'aria-label': 'Recarregar arquivos do disco', text: '⟳',
-        onclick: () => App.tentar(() => App.store.carregarTudo(), 'Não foi possível recarregar') }),
+      el('span', { title: 'Pasta conectada', text: 'Pasta: ' + App.store.nomePasta() }),
+      el('button', { type: 'button', class: 'icone', title: 'Recarregar arquivos do disco', 'aria-label': 'Recarregar arquivos do disco',
+        onclick: () => App.tentar(() => App.store.carregarTudo(), 'Não foi possível recarregar') }, App.icone('recarregar')),
       el('button', { type: 'button', class: 'secundario pequeno', text: 'Trocar pasta', onclick: escolher }));
   }
 
@@ -52,16 +57,17 @@
     const salva = await App.store.pastaSalva();
     principal.replaceChildren(el('section', { class: 'boas-vindas' },
       el('h1', { text: 'Bem-vindo ao Caderno' }),
-      el('p', { text: 'Suas tarefas, notas e livros ficam como arquivos .md numa pasta do seu computador — nada vai para a internet. Pode ser o seu vault do Obsidian.' }),
+      el('p', { text: 'Suas tarefas, notas, leituras, filmes, eventos e referências de arte ficam como arquivos .md numa pasta do seu computador — nada vai para a internet. Pode ser o seu vault do Obsidian.' }),
       el('div', { class: 'acoes' },
         salva ? el('button', { type: 'button', text: `Reabrir “${salva.name}”`, onclick: async () => {
           if (!(await App.tentar(() => App.store.reconectar(true), 'Não foi possível reabrir'))) App.toast('Permissão não concedida.', 'erro');
         } }) : null,
         el('button', { type: 'button', class: salva ? 'secundario' : '', text: salva ? 'Escolher outra pasta' : 'Escolher pasta', onclick: escolher })),
-      el('p', { class: 'dica', text: 'O navegador vai pedir permissão para ler e editar a pasta. Serão criadas as subpastas Entrada, Tarefas, Notas e Livros conforme você usar.' })));
+      el('p', { class: 'dica', text: 'O navegador vai pedir permissão para ler e editar a pasta. Serão criadas subpastas (Tarefas, Notas, Livros, Entretenimento, Calendario, Arte…) conforme você usar.' })));
   }
 
   App.on('dados', () => {
+    if (App.emLote) return; // importações em lote redesenham uma vez só, no fim
     // Não redesenha a tela por baixo de um diálogo aberto com edição em andamento.
     if (document.querySelector('dialog[open]')) { App.pendenteRender = true; return; }
     renderizar();

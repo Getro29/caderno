@@ -15,6 +15,8 @@ App.painel = (() => {
       .sort((a, b) => String(a.meta.prazo).localeCompare(String(b.meta.prazo)));
     const revisar = App.notas.paraRevisar();
     const lendo = App.livros.todos().filter(d => d.meta.status === 'lendo');
+    const vendo = App.entretenimento.todos().filter(d => d.meta.status === 'vendo');
+    const agenda = App.calendario.proximos(7);
     const capturas = App.entrada.todas().length;
     const hora = new Date().getHours();
     const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
@@ -35,9 +37,17 @@ App.painel = (() => {
         cartao('Revisar hoje', '#/notas', lista(revisar.slice(0, 8).map(d => el('li', {},
           el('span', { text: d.meta.titulo || d.nome }), el('span', { class: 'selo', text: App.notas.materiaDe(d) }))),
           'Nenhuma nota para revisar.')),
-        cartao('Lendo agora', '#/livros', lista(lendo.map(d => el('li', {},
+        cartao('Próximos 7 dias', '#/calendario', lista(agenda.slice(0, 8).map(x => el('li', {},
+          x.doc ? el('button', { type: 'button', class: 'link', text: x.titulo, onclick: () => App.calendario.editar(x.doc) }) : el('span', { text: x.titulo }),
+          el('span', { class: 'selo ' + (x.tipo === 'feriado' ? 'perigo' : x.tipo === 'facultativo' ? 'alerta' : 'info'),
+            text: (App.diasAte(x.data) === 0 ? 'hoje' : App.diasAte(x.data) === 1 ? 'amanhã' : App.fmtData(x.data).slice(0, 5)) + (x.hora ? ' ' + x.hora : '') }))),
+          'Nenhum evento ou feriado nos próximos 7 dias.')),
+        cartao('Lendo agora', '#/leitura', lista(lendo.map(d => el('li', {},
           el('span', { text: d.meta.titulo || d.nome }), el('span', { class: 'dica', text: d.meta.autor || '' }))),
           'Nenhum livro em andamento.')),
+        cartao('Assistindo agora', '#/entretenimento', lista(vendo.map(d => el('li', {},
+          el('span', { text: d.meta.titulo || d.nome }), el('span', { class: 'dica', text: { filme: 'Filme', serie: 'Série', anime: 'Anime' }[d.meta.categoria] || '' }))),
+          'Nada em andamento.')),
         cartao('Entrada', '#/entrada', el('p', { class: 'numero-grande' },
           el('strong', { text: capturas }), capturas === 1 ? ' captura para organizar' : ' capturas para organizar')),
         cartao('Progresso', null, el('p', { class: 'vazio', text: 'Nível, XP e missões diárias chegam junto com a direção de arte.' }))));
