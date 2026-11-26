@@ -169,7 +169,7 @@ programador: explicar em linguagem simples, sem jargão.
   quadro a-fazer/fazendo/feita), Notas (por matéria, editor Markdown com pré-visualização,
   revisão espaçada), Livros (estantes lendo/quero-ler/lidos, estrelas, resenha), Início
   (prazos da semana, notas a revisar, lendo agora, contador da Entrada).
-- Ditado 🎤 em todos os campos de texto e leitura 🔊 de notas e resenhas (pt-BR).
+- Ditado (ícone de microfone) em todos os campos de texto e leitura em voz alta de notas e resenhas (pt-BR).
 - Preservação de YAML desconhecido, `.lixeira/`, detecção de edição externa (Obsidian).
 - Teste e2e passando (`tests/e2e.js`). Visual atual é **provisório**.
 
