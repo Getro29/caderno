@@ -216,7 +216,7 @@ App.dieta = (() => {
     const salvar = async () => {
       const doc = App.store.obter(METAS);
       const meta = { tipo: 'metas_dieta', ...(doc?.meta || {}), ...Object.fromEntries(campos.map(([k, , , i]) => [k, num(i.value)])) };
-      if (await salvarErro(App.store.gravar(METAS, meta, doc?.corpo || 'Metas diárias usadas pela página Dieta do Caderno.\n'))) App.toast('Metas salvas.');
+      if (await salvarErro(App.store.gravar(METAS, meta, doc?.corpo || 'Metas diárias usadas pela página Dieta do Bit-life.\n'))) App.toast('Metas salvas.');
     };
     return el('section', { class: 'caixa' },
       el('h2', { text: 'Metas diárias' }),

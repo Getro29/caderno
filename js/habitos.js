@@ -106,9 +106,12 @@ App.habitos = (() => {
     const data = el('input', { type: 'date', value: estado.data, max: App.hoje(), 'aria-label': 'Dia do check-in',
       onchange: e => { if (e.target.value) { estado.data = e.target.value; render(container); } } });
 
+    const areaNivel = el('section', { class: 'caixa', 'aria-label': 'Nível e XP' }, App.gamificacao.cartao(),
+      el('p', { class: 'dica', text: 'Cada dia com todos os hábitos feitos vale 100 XP (cada hábito vale a sua parte). A cada 5 dias completos — 500 XP — você sobe um nível.' }));
     container.replaceChildren(
       el('header', { class: 'cabecalho-tela' }, el('h1', { text: 'Hábitos' })),
-      el('p', { class: 'resumo', text: 'Marque todo dia. Isso alimenta as estatísticas e o briefing do Início.' }),
+      el('p', { class: 'resumo', text: 'Marque todo dia. Isso soma XP, alimenta as estatísticas e o briefing do Início.' }),
+      areaNivel,
       el('div', { class: 'duas-colunas-largas' },
         el('section', { class: 'caixa', 'aria-labelledby': 'titulo-checkin' },
           el('header', { class: 'caixa-cabecalho' },
@@ -118,6 +121,7 @@ App.habitos = (() => {
               data,
               estado.data < App.hoje() ? el('button', { type: 'button', class: 'icone', 'aria-label': 'Próximo dia', onclick: () => { estado.data = App.somarDias(estado.data, 1); render(container); } }, App.icone('direita')) : null)),
           checkin(estado.data, () => {
+            areaNivel.firstChild.replaceWith(App.gamificacao.cartao());
             areaStats.replaceChildren(estatisticas(App.diario.resumoMes(estado.ano, estado.mes)));
             areaGrade.replaceChildren(grade(container));
           })),

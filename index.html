@@ -3,16 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Caderno: tarefas, calendário, estudo, hábitos, dieta, notas, leitura, entretenimento e arte em arquivos Markdown no seu computador.">
-  <title>Caderno</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='18' y='8' width='64' height='84' rx='8' fill='%232f5bd3'/><rect x='30' y='26' width='40' height='6' rx='3' fill='white'/><rect x='30' y='40' width='28' height='6' rx='3' fill='white'/></svg>">
+  <meta name="description" content="Bit-life: tarefas, calendário, estudo, hábitos, dieta, finanças, notas, leitura, entretenimento e arte em arquivos Markdown no seu computador.">
+  <title>Bit-life</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='6' y='6' width='88' height='88' rx='24' fill='%236d4aff'/><rect x='26' y='26' width='20' height='20' rx='5' fill='white'/><rect x='54' y='26' width='20' height='20' rx='5' fill='white' opacity='.55'/><rect x='26' y='54' width='20' height='20' rx='5' fill='white' opacity='.55'/><rect x='54' y='54' width='20' height='20' rx='5' fill='white'/></svg>">
   <link rel="stylesheet" href="./css/estilo.css">
 </head>
 <body>
   <a class="pular" href="#principal">Pular para o conteúdo</a>
   <header class="topo">
-    <a class="marca" href="#/inicio">Caderno</a>
+    <a class="marca" href="#/inicio" aria-label="Bit-life, início"><span class="marca-logo" aria-hidden="true"></span><span>Bit-life</span></a>
     <nav id="nav" aria-label="Seções"></nav>
+    <a id="nivel-topo" class="nivel-topo" href="#/habitos" hidden></a>
     <div id="avisos-topo" class="avisos-topo"></div>
     <div id="info-pasta" class="info-pasta"></div>
   </header>
@@ -22,6 +23,7 @@
   <script src="./js/yaml.js"></script>
   <script src="./js/markdown.js"></script>
   <script src="./js/store.js"></script>
+  <script src="./js/preferencias.js"></script>
   <script src="./js/voz.js"></script>
   <script src="./js/gamificacao.js"></script>
   <script src="./js/diario.js"></script>
@@ -37,6 +39,7 @@
   <script src="./js/agenda.js"></script>
   <script src="./js/habitos.js"></script>
   <script src="./js/dieta.js"></script>
+  <script src="./js/financeiro.js"></script>
   <script src="./js/estudo.js"></script>
   <script src="./js/painel.js"></script>
   <script src="./js/notificacoes.js"></script>

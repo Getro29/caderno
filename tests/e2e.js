@@ -196,7 +196,31 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByLabel('Horas de sono (noite anterior)').press('Tab');
   await page.getByLabel('Como foi o dia').selectOption('4');
   await page.getByText('2/1 dias').or(page.getByText(/1\/\d+ dias · \d+%/).first()).first().waitFor();
+  // nível: 2 de 4 hábitos = 50 XP
+  await page.locator('.nivel', { hasText: '50 / 500 XP' }).first().waitFor();
+  await page.locator('#nivel-topo', { hasText: 'Nv 1' }).waitFor();
   await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/habitos.png', fullPage: true });
+
+  // finanças: entrada, gasto planejado, marcar como feito
+  await page.goto(URL + '#/financas');
+  await page.getByRole('heading', { name: 'Finanças', level: 1 }).waitFor();
+  await page.getByLabel('Tipo').selectOption('entrada');
+  await page.getByLabel('Descrição').fill('Salário');
+  await page.getByLabel('Valor (R$)').fill('3.000,00');
+  await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
+  await page.getByText('Lançamento salvo.').waitFor();
+  await page.getByLabel('Tipo').selectOption('saida');
+  await page.getByLabel('Descrição').fill('Aluguel');
+  await page.getByLabel('Valor (R$)').fill('1200');
+  await page.getByLabel('Categoria').fill('Moradia');
+  await page.getByLabel('Ainda vai acontecer (planejado para essa data)').check();
+  await page.getByLabel('Repetir').selectOption('3');
+  await page.getByRole('button', { name: 'Adicionar', exact: true }).click();
+  await page.getByText(/planejado para os próximos 2 mês/).waitFor();
+  await page.locator('.kpi', { hasText: 'Saldo previsto no fim do mês' }).getByText('R$ 1.800,00').waitFor();
+  await page.getByRole('button', { name: 'Marcar Aluguel como feito' }).first().click();
+  await page.locator('.kpi', { hasText: 'Caixa total' }).getByText('R$ 1.800,00').waitFor();
+  await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/financas.png', fullPage: true });
 
   // dieta: metas, alimento, peso, receita
   await page.goto(URL + '#/dieta');
@@ -271,7 +295,7 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByText('Entrada vazia').waitFor();
 
   // Nenhuma página pode mostrar "null" ou "undefined" soltos na tela.
-  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'notas', 'habitos', 'dieta', 'leitura', 'entretenimento', 'arte']) {
+  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'notas', 'habitos', 'dieta', 'financas', 'leitura', 'entretenimento', 'arte']) {
     await page.goto(URL + '#/' + rota);
     await page.waitForTimeout(150);
     const ruins = await page.evaluate(() => {
@@ -290,6 +314,11 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByRole('region', { name: 'Avisos de hoje' }).getByText(/Brazilian GP · Corrida/).waitFor();
   await page.waitForTimeout(300);
   await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/painel.png', fullPage: true });
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /Preferências/ }).click();
+  await page.getByRole('button', { name: 'Escuro' }).click();
+  await page.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+  await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/painel-escuro.png', fullPage: true });
 
   const arquivos = await page.evaluate(async () => {
     const out = {};

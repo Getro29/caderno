@@ -47,6 +47,10 @@ App.painel = (() => {
     const tb = App.timebox.resumo('dia');
     if (prox) tar.push(`Próximo bloco do seu dia: ${prox.texto} às ${prox.hora}.`);
     else if (!tb.total) tar.push('Seu timeboxing de hoje está vazio: que tal dividir o dia em Tarefas?');
+    const capturas = App.entrada.todas().length;
+    const revisar = App.notas.paraRevisar().length;
+    if (capturas) tar.push(`Há ${capturas} anotação(ões) na Entrada para organizar.`);
+    if (revisar) tar.push(`${revisar} nota(s) de estudo pedem revisão hoje.`);
     frases.push({ tema: 'Tarefas', texto: tar.join(' ') });
 
     // Hábitos de ontem, sono e humor
@@ -89,6 +93,19 @@ App.painel = (() => {
     }
     if (peso) die.push(`Peso mais recente: ${String(peso.peso).replace('.', ',')} kg${peso.variacao7 != null ? ` (${peso.variacao7 > 0 ? '+' : ''}${String(peso.variacao7).replace('.', ',')} kg em 7 dias)` : ''}.`);
     if (die.length) frases.push({ tema: 'Dieta', texto: die.join(' ') });
+
+    // Finanças
+    const fin = App.financeiro.resumo();
+    if (fin.temDados) {
+      const brl = App.financeiro.brl;
+      const contas = fin.proximos.filter(i => i.data <= App.somarDias(hoje, 3));
+      const f = [`Caixa total: ${brl(fin.saldoGeral)}.`];
+      const atrasadas = contas.filter(i => i.data < hoje);
+      const proximas = contas.filter(i => i.data >= hoje);
+      if (atrasadas.length) f.push(`${atrasadas.length} gasto(s) planejado(s) passaram da data sem ser marcados.`);
+      if (proximas.length) f.push(`Até ${App.fmtData(App.somarDias(hoje, 3)).slice(0, 5)}: ${juntar(proximas.slice(0, 3).map(i => `${i.descricao} (${brl(i.valor)})`))}.`);
+      frases.push({ tema: 'Finanças', texto: f.join(' ') });
+    }
 
     // Estudo
     const est = [];
@@ -147,55 +164,57 @@ App.painel = (() => {
     return raiz;
   }
 
+  // Próximos compromissos: prazos de tarefas e agenda, juntos e em ordem.
+  function proximos() {
+    const tarefas = App.tarefas.todas().filter(d => d.meta.status !== 'feita' && d.meta.prazo && App.diasAte(d.meta.prazo) <= 3)
+      .map(d => ({ data: String(d.meta.prazo).slice(0, 10), hora: '', titulo: d.meta.titulo || d.nome, abrir: () => App.tarefas.editar(d), tipo: 'tarefa' }));
+    const agenda = App.calendario.proximos(3).filter(x => x.tipo !== 'comemorativa')
+      .map(x => ({ data: x.data, hora: x.hora || '', titulo: x.titulo, abrir: x.doc ? () => App.calendario.editar(x.doc) : null, tipo: x.tipo }));
+    return [...tarefas, ...agenda].sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+  }
+  const quando = (iso, hora) => {
+    const n = App.diasAte(iso);
+    const dia = n < 0 ? 'atrasada' : n === 0 ? 'hoje' : n === 1 ? 'amanhã' : App.fmtData(iso).slice(0, 5);
+    return dia + (hora ? ' ' + hora : '');
+  };
+
   function render(container) {
-    const abertas = App.tarefas.todas().filter(d => d.meta.status !== 'feita' && d.meta.prazo && App.diasAte(d.meta.prazo) <= 7)
-      .sort((a, b) => String(a.meta.prazo).localeCompare(String(b.meta.prazo)));
-    const revisar = App.notas.paraRevisar();
-    const lendo = App.livros.todos().filter(d => d.meta.status === 'lendo');
-    const vendo = App.entretenimento.todos().filter(d => d.meta.status === 'vendo');
-    const agenda = App.calendario.proximos(7);
-    const capturas = App.entrada.todas().length;
     const hora = new Date().getHours();
     const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
     const frases = briefing();
-    const agora = new Date();
-    const mes = App.diario.resumoMes(agora.getFullYear(), agora.getMonth());
     const CAT = { filme: 'Filme', serie: 'Série', anime: 'Anime' };
+    const emAndamento = [
+      ...App.livros.todos().filter(d => d.meta.status === 'lendo').map(d => ({ capa: d.meta.capa, titulo: d.meta.titulo || d.nome, sub: `Lendo · ${d.meta.autor || ''}`.replace(/ · $/, ''), abrir: () => { location.hash = '#/leitura'; } })),
+      ...App.entretenimento.todos().filter(d => d.meta.status === 'vendo').map(d => ({ capa: d.meta.capa, titulo: d.meta.titulo || d.nome, sub: `Assistindo · ${CAT[d.meta.categoria] || ''}`.replace(/ · $/, ''), abrir: () => { location.hash = '#/entretenimento'; } })),
+    ];
+    const lista = proximos().slice(0, 7);
+    const fin = App.financeiro.resumo();
+    const brl = App.financeiro.brl;
+    const areaNivel = el('div', {}, App.gamificacao.cartao());
 
     container.replaceChildren(
-      el('header', { class: 'cabecalho-tela' },
+      el('header', { class: 'inicio-topo' },
         el('div', {},
-          el('h1', { text: saudacao + '!' }),
-          el('p', { class: 'resumo', text: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) }))),
+          el('p', { class: 'sobretitulo', text: new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }) }),
+          el('h1', { text: saudacao + '!' })),
+        areaNivel),
       el('section', { class: 'briefing', 'aria-labelledby': 'titulo-briefing' },
         el('header', {}, el('h2', { id: 'titulo-briefing', text: 'Briefing do dia' }),
           App.voz.botaoLeitura(() => `${saudacao}! ${frases.map(f => f.texto).join(' ')}`)),
-        el('dl', {}, frases.map(f => [el('dt', { text: f.tema }), el('dd', { text: f.texto })]))),
+        el('dl', {}, frases.map(f => el('div', { class: 'briefing-item' }, el('dt', { text: f.tema }), el('dd', { text: f.texto }))))),
       el('div', { class: 'grade-painel' },
-        cartao('Check-in de hoje', '#/habitos', App.habitos.checkin(App.hoje()), 'cartao-checkin'),
-        cartao('Prazos da semana', '#/tarefas', lista(abertas.slice(0, 8).map(d => {
-          const n = App.diasAte(d.meta.prazo);
-          return el('li', {},
-            el('button', { type: 'button', class: 'link', text: d.meta.titulo || d.nome, onclick: () => App.tarefas.editar(d) }),
-            el('span', { class: 'selo ' + (n < 0 ? 'perigo' : n <= 1 ? 'alerta' : ''), text: App.descreverPrazo(d.meta.prazo) }));
-        }), 'Nada vencendo nos próximos 7 dias.')),
-        cartao('Próximos 7 dias', '#/calendario', lista(agenda.slice(0, 8).map(x => el('li', {},
-          x.doc ? el('button', { type: 'button', class: 'link', text: x.titulo, onclick: () => App.calendario.editar(x.doc) }) : el('span', { text: x.titulo }),
-          el('span', { class: 'selo ' + (x.tipo === 'feriado' ? 'perigo' : x.tipo === 'facultativo' ? 'alerta' : 'info'),
-            text: (App.diasAte(x.data) === 0 ? 'hoje' : App.diasAte(x.data) === 1 ? 'amanhã' : App.fmtData(x.data).slice(0, 5)) + (x.hora ? ' ' + x.hora : '') }))),
-          'Nenhum evento, jogo ou feriado nos próximos 7 dias.')),
-        cartao('Lendo agora', '#/leitura', carrossel(lendo.map(d => ({ capa: d.meta.capa, titulo: d.meta.titulo || d.nome, sub: d.meta.autor || '', abrir: () => { location.hash = '#/leitura'; } })), 'Nenhum livro em andamento.')),
-        cartao('Assistindo agora', '#/entretenimento', carrossel(vendo.map(d => ({ capa: d.meta.capa, titulo: d.meta.titulo || d.nome, sub: CAT[d.meta.categoria] || '', abrir: () => { location.hash = '#/entretenimento'; } })), 'Nada em andamento.')),
-        cartao(`Hábitos em ${MESES[agora.getMonth()]}`, '#/habitos', el('div', {},
-          el('p', { class: 'numero-grande' }, el('strong', { text: `${mes.geralPct}%` }), ' cumpridos até agora'),
-          el('ul', { class: 'lista-habitos-stats compacta' }, mes.porHabito.map(h => el('li', {},
-            el('div', { class: 'linha-stat' }, el('span', { text: h.nome }), el('span', { class: 'dica', text: `${h.pct}%` })),
-            el('div', { class: 'barra-progresso' }, el('span', { style: `width:${h.pct}%` }))))))),
-        cartao('Revisar hoje', '#/notas', lista(revisar.slice(0, 8).map(d => el('li', {},
-          el('span', { text: d.meta.titulo || d.nome }), el('span', { class: 'selo', text: App.notas.materiaDe(d) }))),
-          'Nenhuma nota para revisar.')),
-        cartao('Entrada', '#/tarefas', el('p', { class: 'numero-grande' },
-          el('strong', { text: capturas }), capturas === 1 ? ' captura para organizar' : ' capturas para organizar'))));
+        cartao('Check-in de hoje', '#/habitos', App.habitos.checkin(App.hoje(), () => areaNivel.replaceChildren(App.gamificacao.cartao())), 'cartao-checkin'),
+        cartao('Próximos dias', '#/calendario', lista.length ? el('ul', { class: 'lista-simples' }, lista.map(x => el('li', {},
+          x.abrir ? el('button', { type: 'button', class: 'link', text: x.titulo, onclick: x.abrir }) : el('span', { text: x.titulo }),
+          el('span', { class: 'selo ' + (x.tipo === 'tarefa' ? (App.diasAte(x.data) <= 0 ? 'perigo' : 'alerta') : x.tipo === 'feriado' ? 'perigo' : 'info'), text: quando(x.data, x.hora) })))) :
+          el('p', { class: 'vazio', text: 'Nada nos próximos 3 dias.' })),
+        cartao('Em andamento', null, carrossel(emAndamento, 'Nenhum livro ou série em andamento.')),
+        cartao('Finanças', '#/financas', fin.temDados ? el('div', { class: 'mini-financas' },
+          el('p', { class: 'numero-grande' }, el('strong', { class: fin.saldoGeral < 0 ? 'negativo' : '', text: brl(fin.saldoGeral) }), ' em caixa'),
+          el('p', { class: 'dica', text: `Este mês: +${brl(fin.entradas)} · −${brl(fin.saidas)}` }),
+          fin.proximos.length ? el('ul', { class: 'lista-simples' }, fin.proximos.slice(0, 3).map(i => el('li', {},
+            el('span', { text: i.descricao }), el('span', { class: 'selo ' + (i.data < App.hoje() ? 'perigo' : 'info'), text: `${brl(i.valor)} · ${quando(i.data)}` })))) : null)
+          : el('p', { class: 'vazio', text: 'Comece anotando o que entra e sai na página Finanças.' }))));
   }
 
   return { render, briefing };

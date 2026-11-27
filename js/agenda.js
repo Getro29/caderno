@@ -18,7 +18,7 @@ App.agenda = (() => {
     f1: { nome: 'Fórmula 1', categoria: 'esporte', fonte: 'Jolpica F1 (api.jolpi.ca)', buscar: buscarF1 },
     nfl: { nome: 'NFL', categoria: 'esporte', fonte: 'ESPN', buscar: buscarNFL },
     futebol: { nome: `Futebol (${TIMES.map(t => t.nome).join(', ')})`, categoria: 'esporte', fonte: 'ESPN', buscar: buscarFutebol },
-    vestibulares: { nome: 'Vestibulares, ENEM e SISU (previsões)', categoria: 'vestibular', fonte: 'estimativa do Caderno com base nos anos anteriores', buscar: gerarVestibulares },
+    vestibulares: { nome: 'Vestibulares, ENEM e SISU (previsões)', categoria: 'vestibular', fonte: 'estimativa do Bit-life com base nos anos anteriores', buscar: gerarVestibulares },
   };
 
   // ---- leitura ----

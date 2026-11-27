@@ -28,7 +28,7 @@ App.diario = (() => {
   }
   async function salvarHabitos(lista) {
     const doc = App.store.obter(CONFIG);
-    const corpo = doc?.corpo || 'Lista de hábitos marcados no check-in diário do Caderno. Cada dia fica em Diario/AAAA-MM-DD.md.\n';
+    const corpo = doc?.corpo || 'Lista de hábitos marcados no check-in diário do Bit-life. Cada dia fica em Diario/AAAA-MM-DD.md.\n';
     return App.store.gravar(CONFIG, { tipo: 'config_habitos', ...(doc?.meta || {}), habitos: lista }, corpo);
   }
   const chave = nome => App.slug(nome);
@@ -41,7 +41,7 @@ App.diario = (() => {
       const atual = new Set(App.lista(m.habitos).map(String));
       if (marcado) atual.add(chave(nome)); else atual.delete(chave(nome));
       return { habitos: [...atual] };
-    });
+    }).then(r => { App.gamificacao.aposHabito(); return r; });
   }
 
   // ---- estatísticas ----

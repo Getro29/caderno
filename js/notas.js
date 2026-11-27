@@ -118,7 +118,7 @@ App.notas = (() => {
           el('button', { type: 'button', text: 'Editar', onclick: () => editar(doc) }),
           App.voz.botaoLeitura(() => `${titulo(doc)}. ${App.markdown.textoPuro(doc.corpo)}`),
           el('button', { type: 'button', class: 'secundario', text: 'Marquei como revisada', onclick: () => marcarRevisada(doc) }))),
-      doc.erro ? el('p', { class: 'aviso', text: 'Este arquivo tem um cabeçalho YAML que o Caderno não entende; ele só pode ser editado no Obsidian.' }) : null,
+      doc.erro ? el('p', { class: 'aviso', text: 'Este arquivo tem um cabeçalho YAML que o Bit-life não entende; ele só pode ser editado no Obsidian.' }) : null,
       conteudo);
   }
 

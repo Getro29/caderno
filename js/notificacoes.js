@@ -13,7 +13,8 @@ App.notificacoes = (() => {
     const agenda = App.calendario.proximos(1).filter(a => a.data === hoje)
       .sort((a, b) => String(a.hora || '').localeCompare(String(b.hora || '')));
     const urgentes = tarefas.filter(d => App.diasAte(d.meta.prazo) <= 0);
-    return { urgentes, amanha: tarefas.filter(d => App.diasAte(d.meta.prazo) === 1), agenda, total: urgentes.length + agenda.length };
+    const contas = App.financeiro.planejados().filter(i => i.tipo === 'saida' && i.data <= hoje);
+    return { urgentes, amanha: tarefas.filter(d => App.diasAte(d.meta.prazo) === 1), agenda, contas, total: urgentes.length + agenda.length + contas.length };
   }
 
   function painel(i) {
@@ -27,6 +28,9 @@ App.notificacoes = (() => {
         ...grupo('Hoje no calendário', i.agenda.map(a => el('li', {},
           a.doc ? el('button', { type: 'button', class: 'link', text: a.titulo, onclick: () => { fechar(); App.calendario.editar(a.doc); } }) : el('span', { text: a.titulo }),
           el('span', { class: 'dica', text: a.hora || 'dia inteiro' })))),
+        ...grupo('Contas para pagar', i.contas.map(c => el('li', {},
+          el('a', { href: '#/financas', onclick: fechar, text: c.descricao }),
+          el('span', { class: 'selo ' + (c.data < App.hoje() ? 'perigo' : 'alerta'), text: `${App.financeiro.brl(c.valor)} · ${c.data < App.hoje() ? 'atrasada' : 'hoje'}` })))),
         ...grupo('Vencem amanhã', i.amanha.map(tarefa)),
       ] : el('p', { class: 'vazio', text: 'Nada urgente hoje.' }),
       el('div', { class: 'acoes' }, el('a', { href: '#/calendario', onclick: fechar, text: 'Abrir calendário' }), el('a', { href: '#/tarefas', onclick: fechar, text: 'Abrir tarefas' })));

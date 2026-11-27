@@ -1,8 +1,8 @@
-# CLAUDE.md — Caderno (substituto local do Notion)
+# CLAUDE.md — Bit-life (antigo "Caderno"; substituto local do Notion)
 
 App web estático, hospedado no **GitHub Pages** (domínio próprio depois), que roda
 **no navegador do usuário** para organizar tarefas (com timeboxing), calendário (feriados, esportes,
-vestibulares), estudo (temporizador, simulados), hábitos, dieta, notas, leitura, entretenimento
+vestibulares), estudo (temporizador, simulados), hábitos (com nível/XP), dieta, finanças, notas, leitura, entretenimento
 (filmes/séries/animes), uma galeria de arte e um Início com briefing diário. Os dados vivem como arquivos `.md` com frontmatter YAML numa pasta escolhida
 pelo usuário, compatível com um vault do Obsidian.
 
@@ -55,6 +55,8 @@ pelo usuário, compatível com um vault do Obsidian.
 - Repositório GitHub, publicado pelo GitHub Pages a partir da branch `main` (raiz).
 - Os dados do usuário **nunca** vão para o repositório nem para o site: ficam na pasta
   local escolhida. Nada de analytics, rastreamento ou servidor próprio.
+- Nome do app: **Bit-life** (o repositório continua `caderno`; as pastas de dados `Caderno/`
+  e o banco IndexedDB `caderno` mantêm o nome antigo para não perder dados nem a pasta salva).
 - **Únicas exceções de rede**, sempre **só quando o usuário clica**:
   - `js/catalogo.js` consulta catálogos públicos (Google Books, Open Library, IMDb, iTunes,
     TVmaze, AniList, Jikan) em "Buscar capa" / "Completar capas", enviando apenas o título.
@@ -76,7 +78,8 @@ js/
   markdown.js         # conversor Markdown mínimo e seguro + texto puro para leitura em voz
   store.js            # File System Access: pasta, ler/listar/gravar/alterar/mover .md, cache em memória
   voz.js              # ditado (SpeechRecognition) e leitura (speechSynthesis)
-  gamificacao.js      # por ora só registrarEvento(); regras a definir
+  preferencias.js     # diálogo de Preferências: tema, voz de leitura, pasta (IndexedDB)
+  gamificacao.js      # XP e nível a partir dos hábitos; selo "Nv" no cabeçalho; Caderno/progresso.md
   diario.js           # check-in diário (Diario/) e lista de hábitos; estatísticas do mês
   timebox.js          # componente de timeboxing (blocos de 30 min), usado em Tarefas e Estudo
   entrada.js          # captura rápida (Entrada/) — exibida dentro da página Tarefas
@@ -90,9 +93,10 @@ js/
   agenda.js           # agendas externas no calendário: F1, NFL, futebol, vestibulares, .ics
   habitos.js          # página Hábitos: check-in, grade do mês, estatísticas
   dieta.js            # página Dieta: refeições/macros, água, peso, metas, progresso, receitas
+  financeiro.js       # página Finanças (rota #/financas): entradas, saídas, planejados por data
   estudo.js           # página Estudo: temporizador, checklist, timeboxing, simulados
-  painel.js           # Início: briefing do dia, check-in, carrossel de capas, resumo do mês
-  notificacoes.js     # sino do cabeçalho (tarefas/eventos de hoje) e selo do temporizador
+  painel.js           # Início: nível, briefing do dia, check-in, próximos dias, em andamento, finanças
+  notificacoes.js     # sino do cabeçalho (tarefas/eventos/contas de hoje) e selo do temporizador
   main.js             # roteamento por hash (#/tarefas…), inicialização
 tests/e2e.js          # teste Playwright (usa OPFS no lugar da pasta real)
 ```
@@ -126,6 +130,7 @@ Convenções importantes de gravação:
   Timebox/AAAA-MM-DD-dia.md   # e -estudo.md
   Dieta/metas.md, Dieta/Registros/AAAA-MM-DD.md, Dieta/Receitas/<slug>.md
   Estudo/Dias/AAAA-MM-DD.md, Estudo/Simulados/<slug>.md
+  Financeiro/AAAA-MM.md       # lançamentos do mês (tabela no corpo)
   Entrada/<data-hora>.md      # capturas rápidas
   Caderno/habitos.md          # lista de hábitos do check-in
   Caderno/progresso.md        # estado da gamificação (XP, nível, histórico)
@@ -164,17 +169,27 @@ Campos obrigatórios por tipo (`tipo` sempre presente para identificar o arquivo
   (por porção), tags, criado` — ingredientes e preparo no corpo.
 - **estudo_dia:** `tipo, data` — corpo `- [ ] item` (checklist do dia).
 - **simulado:** `tipo, titulo, data, prova, materia, questoes, acertos, percentual, tempo_min, tags`.
-- **progresso:** `tipo, xp_total, xp_por_area {produtividade, estudos, leitura}, sequencia_dias,
-  ultimo_dia_ativo`
+- **financeiro_mes:** `tipo, mes (AAAA-MM), entradas, saidas, saldo, previsto_entradas, previsto_saidas`
+  (totais recalculados; só `feito` entra em entradas/saidas/saldo) — corpo: tabela
+  `| Data | Tipo | Descrição | Categoria | Valor (R$) | Situação |`, tipo `entrada|saida`,
+  situação `feito|previsto`, valor com ponto decimal (`1200.00`). Lançamento repetido = uma linha
+  `previsto` em cada mês seguinte.
+- **progresso** (`Caderno/progresso.md`, retrato recalculado; a fonte é o `Diario/`): `tipo, xp_total,
+  nivel, xp_para_proximo, xp_por_area {habitos}, sequencia_dias, ultimo_dia_ativo`
 
 Nomes de arquivo: título em slug legível (`revisao-de-calculo.md`), sem acentos nem espaços;
 em colisão, sufixo `-2`, `-3`.
 
 ## Gamificação (regras de negócio)
 
-**A definir** junto com a direção de arte. Até lá, `gamificacao.js` expõe apenas a
-interface (`registrarEvento(tipo, id)`) e os módulos chamam essa função; valores de XP,
-níveis e missões não devem ser implementados.
+Definida pelo usuário: **XP vem dos hábitos do check-in diário.**
+- Um dia com todos os hábitos feitos vale **100 XP**; cada hábito vale a sua fração
+  (4 hábitos → 25 XP cada). Máximo de 100 XP por dia.
+- **A cada 5 dias completos (500 XP) sobe um nível.** Começa no nível 1.
+- Tudo é calculado a partir dos arquivos `Diario/` (`App.gamificacao.progresso()`); depois de
+  marcar um hábito, `aposHabito()` avisa a subida de nível e regrava `Caderno/progresso.md`.
+- Outros eventos continuam passando por `registrarEvento(tipo, id)` mas ainda não dão XP.
+  Missões e XP de outras áreas: decidir com o usuário antes de implementar.
 
 ## Estilo de código
 
@@ -198,6 +213,23 @@ níveis e missões não devem ser implementados.
 **Publicado:** https://getro29.github.io/caderno/ (GitHub Pages, branch `main`, raiz).
 Repositório: https://github.com/Getro29/caderno. O usuário fala português e não é
 programador: explicar em linguagem simples, sem jargão.
+
+**Já feito (v2 — Bit-life):**
+- App renomeado para **Bit-life**. Visual novo (roxo/gradiente, cartões com sombra, cabeçalho
+  translúcido, tema claro/escuro automático ou escolhido em Preferências).
+- Cabeçalho com nomes curtos + ícone (Início, Tarefas, Agenda, Estudo, Notas, Hábitos, Dieta,
+  Finanças, Livros, Filmes, Arte); em telas < 1340 px só ícones (o nome completo fica no `title`).
+  À direita: selo de nível, sino e botão de Preferências (tema, voz, pasta/recarregar/trocar).
+- **Finanças** (`#/financas`): lançar entrada/saída com categoria, data e "ainda vai acontecer"
+  (planejado), repetir todo mês por 3/6/12 meses, marcar planejado como feito, resumo do mês,
+  saldo previsto, caixa total, planejados dos próximos 45 dias, gastos por categoria.
+  Contas planejadas vencidas/de hoje aparecem no sino e no briefing.
+- **Nível/XP** pelos hábitos (ver Gamificação): cartão no Início e em Hábitos, selo "Nv" no topo.
+- **Início mais limpo:** saudação + nível, briefing em blocos (com Ouvir), check-in, próximos
+  dias (prazos + agenda juntos), em andamento (livros e séries num carrossel só) e finanças.
+  Entrada e notas a revisar viraram frases do briefing.
+- **Voz:** padrão masculina pt-BR (heurística por nome: Antonio, Daniel, Donato, Fabio…),
+  velocidade 0,9 e tom 0,8 ("narrador"); ajustável em Preferências.
 
 **Já feito (v1):**
 - Navegação: Início, Tarefas, Calendário, Estudo, Notas, Hábitos, Dieta, Leitura,
@@ -232,6 +264,8 @@ programador: explicar em linguagem simples, sem jargão.
 - Teste e2e passando (`tests/e2e.js`). Visual atual é **provisório**.
 
 **Decisões tomadas:**
+- Voz do Cid Moreira: **não** clonar a voz de uma pessoa real a partir de vídeos (direitos de
+  voz/imagem e exige servidor de IA). Alternativa adotada: voz masculina do sistema com tom grave.
 - Só Chrome/Edge no computador por enquanto.
 - "Sincronizar com Goodreads/Letterboxd" = importar o CSV exportado + capas de catálogos
   abertos (não há API pública utilizável num site estático). Reimportar só completa campos
@@ -253,11 +287,10 @@ programador: explicar em linguagem simples, sem jargão.
 **Pendente / próximos passos:**
 0. Confirmar no navegador do usuário que as buscas de jogos (ESPN/Jolpica) e de capas
    funcionam de verdade; ajustar fontes se algum serviço bloquear.
-1. Definir **gamificação** (XP por área, níveis, missões diárias) **junto com a direção de
-   arte** — decidir com o usuário antes de implementar.
-2. Direção de arte definitiva (substituir o estilo provisório de `css/estilo.css`).
-3. Talvez: deixar a tela de boas-vindas mais clara sobre para que serve a pasta
-   (o usuário teve essa dúvida).
+1. **Front-end:** continuar a direção de arte com o usuário (primeira versão moderna feita:
+   tokens em `:root` de `css/estilo.css`); revisar página por página.
+2. Gamificação além dos hábitos (missões, XP de tarefas/estudo) — só com o usuário.
+3. Finanças: talvez metas/orçamento por categoria e gráfico do saldo.
 4. Futuro: versão celular + assistente de IA ("mente do Caderno") — ver seção acima.
 
 **Limitações do ambiente de nuvem do Claude:** o `gh` não consegue criar repositórios nem

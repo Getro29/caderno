@@ -2,7 +2,7 @@
 // Único ponto de acesso aos arquivos. Interface genérica (listar, ler, gravar, criar, mover,
 // moverParaLixeira) para que um adaptador futuro (ex.: sincronização no celular) a substitua.
 App.store = (() => {
-  const PASTAS = ['Entrada', 'Tarefas', 'Notas', 'Livros', 'Entretenimento', 'Calendario', 'Arte', 'Diario', 'Timebox', 'Dieta', 'Estudo', 'Caderno'];
+  const PASTAS = ['Entrada', 'Tarefas', 'Notas', 'Livros', 'Entretenimento', 'Calendario', 'Arte', 'Diario', 'Timebox', 'Dieta', 'Estudo', 'Financeiro', 'Caderno'];
   const cache = new Map(); // caminho -> doc
   let raiz = null;
 
@@ -41,6 +41,10 @@ App.store = (() => {
     raiz = h;
     await cfg('pasta', h).catch(() => {});
     await carregarTudo();
+  }
+  // Preferências de interface (tema, voz de leitura). Não são dados do usuário.
+  async function preferencia(chave, valor) {
+    try { return await cfg('pref:' + chave, valor); } catch { return undefined; }
   }
   async function pastaSalva() { try { return await cfg('pasta'); } catch { return null; } }
   async function reconectar(pedir = true) {
@@ -153,7 +157,7 @@ App.store = (() => {
       const atual = await (await arquivo(caminho)).getFile();
       if (atual.lastModified > antigo.modificado) {
         await ler(caminho); App.emit('dados');
-        throw new Error('o arquivo foi alterado fora do Caderno; recarreguei a versão nova, refaça a edição');
+        throw new Error('o arquivo foi alterado fora do Bit-life; recarreguei a versão nova, refaça a edição');
       }
     }
     await escrever(caminho, App.yaml.serializar(meta, corpo, antigo?.brutos));
@@ -223,6 +227,6 @@ App.store = (() => {
   return {
     suportado, escolherPasta, pastaSalva, reconectar, conectado, nomePasta,
     carregarTudo, listar, obter, ler, gravar, alterar, criar, mover, moverParaLixeira,
-    existe, gravarBinario, urlArquivo,
+    existe, gravarBinario, urlArquivo, preferencia,
   };
 })();
