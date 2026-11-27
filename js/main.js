@@ -15,6 +15,7 @@
     leitura: { titulo: 'Leitura', curto: 'Livros', icone: 'livro', modulo: () => App.livros },
     entretenimento: { titulo: 'Entretenimento', curto: 'Filmes', icone: 'tela', modulo: () => App.entretenimento },
     arte: { titulo: 'Arte', curto: 'Arte', icone: 'paleta', modulo: () => App.arte },
+    perfil: { titulo: 'Perfil', curto: 'Perfil', icone: 'pessoa', modulo: () => App.perfil, oculta: true }, // botão com a foto, no canto
   };
   const APELIDOS = { livros: 'leitura', entrada: 'tarefas', financeiro: 'financas' }; // endereços antigos continuam funcionando
   const principal = document.getElementById('principal');
@@ -25,7 +26,7 @@
 
   function desenharNav() {
     const atual = rotaAtual();
-    nav.replaceChildren(...Object.entries(ROTAS).map(([id, r]) => el('a', {
+    nav.replaceChildren(...Object.entries(ROTAS).filter(([, r]) => !r.oculta).map(([id, r]) => el('a', {
       href: '#/' + id, 'aria-current': id === atual ? 'page' : null, title: r.titulo,
     }, App.icone(r.icone), el('span', { text: r.curto }))));
   }
@@ -41,6 +42,7 @@
     if (id !== rotaDesenhada) { rotaDesenhada = id; App.animacao.entrada(principal); }
     App.notificacoes.desenhar();
     App.gamificacao.desenharSelo();
+    App.perfil.desenharBotao();
   }
 
   async function escolher() {

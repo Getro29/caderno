@@ -27,8 +27,13 @@ App.habitos = (() => {
       onchange: async e => { await salvarErro(App.diario.atualizar(data, { sono_horas: e.target.value === '' ? null : Number(e.target.value) })); aoMudar?.(); } });
     const humor = el('select', { onchange: async e => { await salvarErro(App.diario.atualizar(data, { humor: Number(e.target.value) || null })); aoMudar?.(); } },
       el('option', { value: '', text: '—' }), Object.entries(HUMOR).map(([v, r]) => el('option', { value: v, selected: Number(m.humor) === Number(v), text: `${v} · ${r}` })));
+    const idSocial = `social-${data}`;
+    const social = el('div', { class: 'checkin-social' },
+      el('input', { type: 'checkbox', id: idSocial, checked: App.diario.socializou(data),
+        onchange: async e => { await salvarErro(App.diario.marcarSocial(data, e.target.checked)); aoMudar?.(); } }),
+      el('label', { for: idSocial }, 'Socializei ', el('span', { class: 'dica', text: '(encontrei ou conversei com alguém de verdade; não conta XP)' })));
     return el('div', { class: 'checkin' },
-      lista,
+      lista, social,
       el('div', { class: 'checkin-numeros' },
         App.campo('Horas de sono (noite anterior)', sono, { voz: false }),
         App.campo('Como foi o dia', humor, { voz: false })));
@@ -55,7 +60,25 @@ App.habitos = (() => {
               if (!feito) App.animacao.confirmar(container.querySelector(`[data-celula="${d}|${App.slug(h)}"]`));
             },
           }));
-        }))))));
+        }))),
+        linhaSocial(dias, hoje, container))));
+  }
+
+  // Linha separada na grade: "Socializar" não é hábito (não dá XP), por isso tem outra cor.
+  function linhaSocial(dias, hoje, container) {
+    return el('tr', { class: 'linha-social' },
+      el('th', { scope: 'row', text: 'Socializar' }),
+      dias.map(d => {
+        const feito = App.diario.socializou(d);
+        return el('td', {}, el('button', {
+          type: 'button', class: 'celula-habito social' + (feito ? ' feito' : ''), 'aria-pressed': String(feito), disabled: d > hoje,
+          'aria-label': `Socializar, dia ${Number(d.slice(8))}`, 'data-celula': `${d}|socializar`,
+          onclick: async () => {
+            await salvarErro(App.diario.marcarSocial(d, !feito)); render(container);
+            if (!feito) App.animacao.confirmar(container.querySelector(`[data-celula="${d}|socializar"]`));
+          },
+        }));
+      }));
   }
 
   function barra(pct, rotulo) {
@@ -69,7 +92,8 @@ App.habitos = (() => {
         numero(`${r.geralPct}%`, 'dos hábitos cumpridos'),
         numero(r.sonoMedio ? `${r.sonoMedio.toFixed(1)} h` : '—', 'de sono em média'),
         numero(r.humorMedio ? r.humorMedio.toFixed(1) : '—', 'humor médio (1 a 5)'),
-        numero(r.estudoMinutos ? `${Math.floor(r.estudoMinutos / 60)}h${String(r.estudoMinutos % 60).padStart(2, '0')}` : '—', 'de estudo cronometrado')),
+        numero(r.estudoMinutos ? `${Math.floor(r.estudoMinutos / 60)}h${String(r.estudoMinutos % 60).padStart(2, '0')}` : '—', 'de estudo cronometrado'),
+        numero(String(r.socialDias), r.socialDias === 1 ? 'dia socializando' : 'dias socializando')),
       el('ul', { class: 'lista-habitos-stats' }, r.porHabito.map(h => el('li', {},
         el('div', { class: 'linha-stat' }, el('strong', { text: h.nome }),
           el('span', { class: 'dica', text: `${h.feitos}/${h.dias} dias · ${h.pct}%${h.sequencia ? ` · sequência de ${h.sequencia} dia(s)` : ''}` })),

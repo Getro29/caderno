@@ -199,7 +199,25 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   // nível: 2 de 4 hábitos = 50 XP
   await page.locator('.nivel', { hasText: '50 / 500 XP' }).first().waitFor();
   await page.locator('#nivel-topo', { hasText: 'Nv 1' }).waitFor();
+  // socializar: fora do XP, aparece como linha própria na grade do mês
+  await page.getByRole('checkbox', { name: /Socializei/ }).check();
+  await page.locator(`[data-celula="${hojeISO}|socializar"][aria-pressed="true"]`).waitFor();
+  await page.locator('.nivel', { hasText: '50 / 500 XP' }).first().waitFor();
   await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/habitos.png', fullPage: true });
+
+  // perfil: nome, frase e foto; botão com a foto no canto do cabeçalho
+  await page.locator('#perfil-topo').click();
+  await page.getByRole('button', { name: 'Editar perfil' }).click();
+  await page.getByLabel('Nome', { exact: true }).fill('Getro');
+  await page.getByLabel('Frase do perfil').fill('Um dia de cada vez');
+  await page.locator('#perfil-foto').setInputFiles({ name: 'eu.png', mimeType: 'image/png', buffer: png });
+  await page.getByText('Foto atualizada.').waitFor();
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click();
+  await page.getByRole('heading', { name: 'Getro' }).waitFor();
+  await page.locator('#perfil-topo img').waitFor();
+  await page.getByRole('img', { name: /Equilíbrio dos últimos .*Socialização 100%/ }).waitFor();
+  await page.goto(URL + '#/inicio');
+  await page.locator('.retrato', { hasText: 'Getro' }).waitFor();
 
   // finanças: entrada, gasto planejado, marcar como feito
   await page.goto(URL + '#/financas');
@@ -295,7 +313,7 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByText('Entrada vazia').waitFor();
 
   // Nenhuma página pode mostrar "null" ou "undefined" soltos na tela.
-  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'notas', 'habitos', 'dieta', 'financas', 'leitura', 'entretenimento', 'arte']) {
+  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'notas', 'habitos', 'dieta', 'financas', 'leitura', 'entretenimento', 'arte', 'perfil']) {
     await page.goto(URL + '#/' + rota);
     await page.waitForTimeout(150);
     const ruins = await page.evaluate(() => {
@@ -333,6 +351,8 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
     return out;
   });
   for (const [c, t] of Object.entries(arquivos).sort()) console.log(`===== ${c}\n${t}`);
+  if (!/nome: Getro/.test(arquivos['Caderno/perfil.md'] || '') || !/foto: Caderno\/imagens\/foto\.png/.test(arquivos['Caderno/perfil.md'])) throw new Error('perfil.md incompleto');
+  if (!/socializou: true/.test(arquivos[`Diario/${hojeISO}.md`] || '')) throw new Error('socializou não gravado no diário');
   console.log('ERROS:', erros.length ? erros : 'nenhum');
   await browser.close();
   process.exit(erros.length ? 1 : 0);

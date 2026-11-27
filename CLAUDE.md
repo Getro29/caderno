@@ -2,7 +2,7 @@
 
 App web estático, hospedado no **GitHub Pages** (domínio próprio depois), que roda
 **no navegador do usuário** para organizar tarefas (com timeboxing), calendário (feriados, esportes,
-vestibulares), estudo (temporizador, simulados), hábitos (com nível/XP), dieta, finanças, notas, leitura, entretenimento
+vestibulares), estudo (temporizador, simulados), hábitos (com nível/XP), perfil (foto, capa, selos, gráfico de equilíbrio), dieta, finanças, notas, leitura, entretenimento
 (filmes/séries/animes), uma galeria de arte e um Início com briefing diário. Os dados vivem como arquivos `.md` com frontmatter YAML numa pasta escolhida
 pelo usuário, compatível com um vault do Obsidian.
 
@@ -96,7 +96,8 @@ js/
   dieta.js            # página Dieta: refeições/macros, água, peso, metas, progresso, receitas
   financeiro.js       # página Finanças (rota #/financas): entradas, saídas, planejados por data
   estudo.js           # página Estudo: temporizador, checklist, timeboxing, simulados
-  painel.js           # Início: nível, briefing do dia, check-in, próximos dias, em andamento, finanças
+  perfil.js           # página Perfil (#/perfil, botão com a foto no canto): capa, selos, números, radar de equilíbrio
+  painel.js           # Início: retrato + radar de equilíbrio, nível, briefing do dia, check-in, próximos dias, em andamento, finanças
   notificacoes.js     # sino do cabeçalho (tarefas/eventos/contas de hoje) e selo do temporizador
   main.js             # roteamento por hash (#/tarefas…), inicialização
 tests/e2e.js          # teste Playwright (usa OPFS no lugar da pasta real)
@@ -136,6 +137,7 @@ Convenções importantes de gravação:
   Financeiro/AAAA-MM.md       # lançamentos do mês (tabela no corpo)
   Entrada/<data-hora>.md      # capturas rápidas
   Caderno/habitos.md          # lista de hábitos do check-in
+  Caderno/perfil.md           # perfil (nome, frase, foto, capa); imagens em Caderno/imagens/
   Caderno/progresso.md        # retrato do nível/XP (recalculado a partir do Diario/)
   Caderno/missoes/AAAA-MM-DD.md
   .lixeira/
@@ -161,7 +163,10 @@ Campos obrigatórios por tipo (`tipo` sempre presente para identificar o arquivo
   Excluir move o `.md` **e** a imagem para `.lixeira/`.
 - **agenda:** `tipo, nome, categoria (esporte|vestibular|importado), fonte, atualizado, mostrar`
   — corpo: uma linha por compromisso `- AAAA-MM-DD HH:MM | título` (hora opcional), hora local.
-- **diario:** `tipo, data, habitos (lista de slugs feitos), sono_horas, humor (1–5), estudo_minutos`.
+- **diario:** `tipo, data, habitos (lista de slugs feitos), sono_horas, humor (1–5), estudo_minutos, socializou (true|false)`.
+  `socializou` é métrica à parte: não é hábito e **não dá XP**.
+- **perfil** (`Caderno/perfil.md`): `tipo, nome, frase, foto, capa (caminhos em Caderno/imagens/ ou null), atualizado`
+  — corpo = "Sobre mim". Trocar/tirar imagem move a antiga para `.lixeira/`.
 - **config_habitos** (`Caderno/habitos.md`): `tipo, habitos` (lista de nomes; padrão Leitura,
   Dieta do dia, Exercício, Bíblia). Slug do nome é a chave usada no diário.
 - **timebox:** `tipo, data, contexto (dia|estudo)` — corpo `- [ ] HH:MM o que fazer` ([x] = feito).
@@ -193,6 +198,27 @@ Definida pelo usuário: **XP vem dos hábitos do check-in diário.**
   marcar um hábito, `aposHabito()` avisa a subida de nível e regrava `Caderno/progresso.md`.
 - Outros eventos continuam passando por `registrarEvento(tipo, id)` mas ainda não dão XP.
   Missões e XP de outras áreas: decidir com o usuário antes de implementar.
+
+## Identidade visual
+
+- Paleta **preto, vermelho e branco** nos dois temas (claro e escuro); o vermelho é o destaque
+  (`--primaria`: `#c8102e` no claro, `#ff4d5e` no escuro). Preenchimentos com texto branco usam
+  `--gradiente` (vermelho fixo `#d1142c → #7a0a15`); sombras coloridas usam `--brilho`. Contrastes AA conferidos.
+- Logo: cápsula de remédio inclinada, metade vermelha e metade branca, com contorno preto
+  (`.marca-logo` em CSS e o favicon SVG no `index.html`). Nome "BIT-LIFE" em caixa alta, peso 900, itálico.
+  Inspiração na estética de anime dos anos 80, sem copiar desenho, texto ou logo de obra existente.
+- Perfil inspirado em perfil de jogo (capa larga, foto, nível, selos, vitrine); Início com retrato
+  + gráfico de radar, inspirado em painéis de "gamify your life".
+
+## Gráfico de equilíbrio (radar)
+
+`App.perfil.equilibrio()`: últimos 30 dias (a partir do primeiro check-in), 0–100% por eixo:
+- **Saúde:** média diária de sono ≥ 7 h (6 h = meio), hábito de exercício (nome com exerc/treino/
+  academia/corrida…) e alimentação (hábito com "dieta" ou registro em `Dieta/Registros/`).
+- **Estudo:** `estudo_minutos` por dia, meta 60 min.
+- **Diversão:** livros/filmes/séries terminados na janela (+0,5 por item em andamento), meta 1 por semana.
+- **Socialização:** dias com `socializou: true`, meta 3 por semana.
+Não mexe no XP. Selos do perfil também são calculados na hora (nada gravado).
 
 ## Animação e design
 
@@ -306,6 +332,14 @@ programador: explicar em linguagem simples, sem jargão.
 **Já feito (v2.1):** animações (entrada das páginas em sequência, barras enchendo, barra de XP
 andando, comemoração com faíscas ao subir de nível, "pulo" ao marcar caixas e células de hábito,
 avisos e diálogos deslizando) e skill de design `ui-ux-pro-max` instalada.
+
+**Já feito (v3 — identidade visual):** paleta preto/vermelho/branco, logo de cápsula, métrica
+"Socializar" (check-in, grade do mês, estatísticas), radar de equilíbrio no Início e no Perfil,
+retrato com foto no Início, página Perfil com capa, foto, frase, sobre mim, números, selos e favoritos.
+
+**Ideia conversada (não implementada):** botão "compartilhar" (ex.: livro que estou lendo) gerando
+um link para o site com os dados no próprio endereço (`#/ver?d=...`), sem servidor; quem abre vê o
+cartão e um convite para usar o Bit-life com a própria pasta. Não precisa de repositório próprio.
 
 **Pendente / próximos passos:**
 0. Confirmar no navegador do usuário que as buscas de jogos (ESPN/Jolpica) e de capas

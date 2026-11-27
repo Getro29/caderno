@@ -1,6 +1,6 @@
 'use strict';
 // Diário: um arquivo por dia (Diario/AAAA-MM-DD.md) com o check-in diário — hábitos marcados,
-// horas de sono, humor e minutos de estudo. É a base das estatísticas e do briefing do Início.
+// horas de sono, humor, minutos de estudo e se socializou (fora do XP). É a base das estatísticas e do briefing do Início.
 // A lista de hábitos fica em Caderno/habitos.md.
 App.diario = (() => {
   const PASTA = 'Diario';
@@ -15,7 +15,7 @@ App.diario = (() => {
   // patch pode ser um objeto ou uma função (metaAtual) => objeto, aplicada na versão mais recente.
   function atualizar(data, patch, opcoes = { inline: true }) {
     return App.store.alterar(caminho(data), doc => {
-      const atual = { tipo: 'diario', data, habitos: [], sono_horas: null, humor: null, estudo_minutos: null, ...(doc?.meta || {}) };
+      const atual = { tipo: 'diario', data, habitos: [], sono_horas: null, humor: null, estudo_minutos: null, socializou: false, ...(doc?.meta || {}) };
       return { meta: { ...atual, ...(typeof patch === 'function' ? patch(atual) : patch) }, corpo: doc?.corpo || '' };
     }, opcoes);
   }
@@ -73,17 +73,23 @@ App.diario = (() => {
       return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
     };
     const estudo = registros.reduce((a, m) => a + (Number(m.estudo_minutos) || 0), 0);
+    const social = registros.filter(m => m.socializou === true).length;
     const total = porHabito.reduce((a, h) => a + h.feitos, 0);
     const possivel = porHabito.reduce((a, h) => a + h.dias, 0);
     return {
       ano, mes, dias: dias.length, porHabito, geralPct: possivel ? Math.round((total / possivel) * 100) : 0,
       sonoMedio: media('sono_horas'), humorMedio: media('humor'), estudoMinutos: estudo,
+      socialDias: social, socialPct: dias.length ? Math.round((social / dias.length) * 100) : 0,
     };
   }
+
+  // Socializar: métrica à parte dos hábitos (não muda o XP, que vem só dos hábitos).
+  const socializou = data => meta(data).socializou === true;
+  const marcarSocial = (data, sim) => atualizar(data, { socializou: !!sim });
 
   function somarEstudo(data, minutos) {
     return atualizar(data, m => ({ estudo_minutos: (Number(m.estudo_minutos) || 0) + Math.round(minutos) }), {});
   }
 
-  return { caminho, obter, meta, atualizar, habitos, salvarHabitos, chave, feitos, fez, alternar, sequencia, resumoMes, diasDoMes, somarEstudo };
+  return { caminho, obter, meta, atualizar, habitos, salvarHabitos, chave, feitos, fez, alternar, sequencia, resumoMes, diasDoMes, somarEstudo, socializou, marcarSocial };
 })();

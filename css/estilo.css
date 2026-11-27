@@ -1,30 +1,33 @@
-/* Bit-life — visual moderno (tokens em :root; tema escuro automático ou escolhido em Preferências). */
+/* Bit-life — tokens em :root; tema escuro automático ou escolhido em Preferências. */
+/* Paleta: preto, vermelho e branco. O vermelho é o destaque nos dois temas (claro e escuro). */
 :root {
-  --fundo: #f4f5fa;
+  --fundo: #f5f5f4;
   --superficie: #ffffff;
-  --superficie-2: #eef0f7;
-  --texto: #161827;
-  --texto-suave: #575c72;
-  --borda: #e0e3ee;
-  --primaria: #5b3df5;
-  --primaria-2: #8a5cff;
-  --primaria-suave: #ece8ff;
+  --superficie-2: #ededec;
+  --texto: #0b0b0b;
+  --texto-suave: #555555;
+  --borda: #dcdcdb;
+  --primaria: #c8102e;
+  --primaria-2: #7a0a15;
+  --primaria-suave: #fbe4e7;
   --primaria-texto: #ffffff;
   --sucesso: #0d7a48;
   --sucesso-fundo: #dcf5e8;
-  --perigo: #b3261e;
-  --perigo-fundo: #fde6e4;
+  --perigo: #9f1239;
+  --perigo-fundo: #fde6e8;
   --alerta: #8a5a00;
   --alerta-fundo: #fdf0d5;
   --info: #1d5fa8;
   --info-fundo: #e1edfb;
-  --tag: #5b3fa8;
-  --tag-fundo: #ece6fa;
-  --foco: #5b3df5;
-  --topo-fundo: rgb(255 255 255 / .78);
-  --sombra: 0 1px 2px rgb(22 24 39 / .04), 0 8px 24px rgb(22 24 39 / .06);
-  --sombra-forte: 0 12px 40px rgb(22 24 39 / .14);
-  --gradiente: linear-gradient(135deg, var(--primaria), var(--primaria-2));
+  --tag: #9b0d22;
+  --tag-fundo: #fbe4e7;
+  --foco: #c8102e;
+  --topo-fundo: rgb(255 255 255 / .82);
+  --sombra: 0 1px 2px rgb(0 0 0 / .05), 0 8px 24px rgb(0 0 0 / .07);
+  --sombra-forte: 0 12px 40px rgb(0 0 0 / .16);
+  --brilho: rgb(200 16 46 / .32);
+  /* Preenchimentos com texto branco por cima: o mesmo vermelho nos dois temas. */
+  --gradiente: linear-gradient(135deg, #d1142c, #7a0a15);
   --raio: 16px;
   --raio-p: 10px;
   --fonte: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, Roboto, Ubuntu, sans-serif;
@@ -33,23 +36,23 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --fundo: #0d0e16; --superficie: #161824; --superficie-2: #20233a; --texto: #eceefa;
-    --texto-suave: #a4a9c4; --borda: #2a2e46; --primaria: #a693ff; --primaria-2: #d18cff; --primaria-suave: #2a2550; --primaria-texto: #150f3a;
+    --fundo: #0b0b0b; --superficie: #161616; --superficie-2: #212121; --texto: #f4f4f4;
+    --texto-suave: #a3a3a3; --borda: #2c2c2c; --primaria: #ff4d5e; --primaria-2: #b3001b; --primaria-suave: #3a1117; --primaria-texto: #0b0b0b;
     --sucesso: #63d9a0; --sucesso-fundo: #123426;
     --perigo: #ffb4ab; --perigo-fundo: #4a1c18; --alerta: #f5c56b; --alerta-fundo: #3d2e0d;
-    --info: #9cc3f5; --info-fundo: #16314f; --tag: #cdbdfa; --tag-fundo: #342a52; --foco: #b9a9ff;
-    --topo-fundo: rgb(22 24 36 / .78);
-    --sombra: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .25); --sombra-forte: 0 12px 40px rgb(0 0 0 / .5); color-scheme: dark;
+    --info: #9cc3f5; --info-fundo: #16314f; --tag: #ff9aa4; --tag-fundo: #3a1117; --foco: #ff6b78;
+    --topo-fundo: rgb(11 11 11 / .82); --brilho: rgb(255 40 60 / .3);
+    --sombra: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .35); --sombra-forte: 0 12px 40px rgb(0 0 0 / .6); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --fundo: #0d0e16; --superficie: #161824; --superficie-2: #20233a; --texto: #eceefa;
-  --texto-suave: #a4a9c4; --borda: #2a2e46; --primaria: #a693ff; --primaria-2: #d18cff; --primaria-suave: #2a2550; --primaria-texto: #150f3a;
+  --fundo: #0b0b0b; --superficie: #161616; --superficie-2: #212121; --texto: #f4f4f4;
+  --texto-suave: #a3a3a3; --borda: #2c2c2c; --primaria: #ff4d5e; --primaria-2: #b3001b; --primaria-suave: #3a1117; --primaria-texto: #0b0b0b;
   --sucesso: #63d9a0; --sucesso-fundo: #123426;
   --perigo: #ffb4ab; --perigo-fundo: #4a1c18; --alerta: #f5c56b; --alerta-fundo: #3d2e0d;
-  --info: #9cc3f5; --info-fundo: #16314f; --tag: #cdbdfa; --tag-fundo: #342a52; --foco: #b9a9ff;
-  --topo-fundo: rgb(22 24 36 / .78);
-  --sombra: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .25); --sombra-forte: 0 12px 40px rgb(0 0 0 / .5); color-scheme: dark;
+  --info: #9cc3f5; --info-fundo: #16314f; --tag: #ff9aa4; --tag-fundo: #3a1117; --foco: #ff6b78;
+  --topo-fundo: rgb(11 11 11 / .82); --brilho: rgb(255 40 60 / .3);
+  --sombra: 0 1px 2px rgb(0 0 0 / .4), 0 8px 24px rgb(0 0 0 / .35); --sombra-forte: 0 12px 40px rgb(0 0 0 / .6); color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -69,11 +72,13 @@ a { color: var(--primaria); }
 /* ---- layout: cabeçalho no topo ---- */
 .topo { position: sticky; top: 0; z-index: 5; background: var(--topo-fundo); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px);
   border-bottom: 1px solid var(--borda); display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; padding: 10px clamp(16px, 3vw, 32px); }
-.marca { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.15rem; letter-spacing: -.02em; color: var(--texto); text-decoration: none; }
-.marca-logo { width: 28px; height: 28px; border-radius: 9px; background: var(--gradiente); box-shadow: 0 4px 12px rgb(91 61 245 / .35); position: relative; flex: none; }
-.marca-logo::before, .marca-logo::after { content: ""; position: absolute; width: 8px; height: 8px; border-radius: 2.5px; background: #fff; }
-.marca-logo::before { left: 6px; top: 6px; box-shadow: 8px 8px 0 #fff; }
-.marca-logo::after { right: 6px; top: 6px; opacity: .55; box-shadow: -8px 8px 0 #fff; }
+.marca { display: inline-flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.12rem; letter-spacing: .06em; text-transform: uppercase; color: var(--texto); text-decoration: none; }
+.marca > span:last-child { font-style: italic; }
+/* Logo: cápsula de remédio, metade vermelha e metade branca, inclinada. */
+.marca-logo { width: 32px; height: 14px; border-radius: 999px; flex: none; transform: rotate(-35deg); border: 2px solid var(--texto);
+  background: linear-gradient(90deg, #d1142c 0 50%, #fff 50% 100%); box-shadow: 0 3px 10px var(--brilho); position: relative; }
+.marca-logo::before { content: ""; position: absolute; left: 4px; top: 2px; width: 9px; height: 3px; border-radius: 999px; background: rgb(255 255 255 / .55); }
+.marca-logo::after { content: ""; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 2px; margin-left: -1px; background: var(--texto); }
 #nav { display: flex; flex-wrap: wrap; gap: 2px; flex: 1; justify-content: center; }
 #nav a { display: inline-flex; align-items: center; gap: 6px; color: var(--texto-suave); text-decoration: none; padding: 7px 11px; border-radius: 999px; font-size: .9rem; font-weight: 550; transition: background .15s, color .15s; }
 #nav a .ico { width: 1.05em; height: 1.05em; }
@@ -101,7 +106,7 @@ main { padding: 32px clamp(16px, 4vw, 40px) 64px; max-width: 1180px; width: 100%
 button { font: inherit; cursor: pointer; border: 1px solid transparent; border-radius: var(--raio-p); padding: 8px 16px; background: var(--primaria); color: var(--primaria-texto); font-weight: 600; transition: background .15s, border-color .15s, box-shadow .15s, transform .1s; }
 button:hover { filter: brightness(1.07); }
 button:active { transform: translateY(1px); }
-button.destaque, .acoes > button:not(.secundario):not(.icone):not(.perigo):not(.link):last-child { box-shadow: 0 2px 10px rgb(91 61 245 / .28); }
+button.destaque, .acoes > button:not(.secundario):not(.icone):not(.perigo):not(.link):last-child { box-shadow: 0 2px 10px var(--brilho); }
 button.secundario { background: var(--superficie); color: var(--texto); border-color: var(--borda); font-weight: 500; }
 button.secundario:hover { background: var(--superficie-2); filter: none; }
 button.perigo { background: transparent; color: var(--perigo); border-color: var(--perigo); }
@@ -454,7 +459,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primaria);
 /* ---- nível e XP ---- */
 .nivel { display: flex; gap: 14px; align-items: center; background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 16px; box-shadow: var(--sombra); }
 .caixa .nivel { border: 0; box-shadow: none; padding: 0; background: none; }
-.nivel-emblema { width: 52px; height: 52px; flex: none; border-radius: 16px; background: var(--gradiente); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 1.35rem; box-shadow: 0 6px 18px rgb(91 61 245 / .35); }
+.nivel-emblema { width: 52px; height: 52px; flex: none; border-radius: 16px; background: var(--gradiente); display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 1.35rem; box-shadow: 0 6px 18px var(--brilho); }
 .nivel-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 
 /* ---- finanças ---- */
@@ -491,3 +496,83 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primaria);
 .faisca { position: fixed; z-index: 200; width: 7px; height: 7px; border-radius: 50%; background: var(--gradiente); pointer-events: none; box-shadow: 0 0 6px var(--primaria-2); }
 .cartao-painel, .caixa, .nivel { transition: box-shadow .2s, border-color .2s; }
 @media (prefers-reduced-motion: reduce) { .faisca { display: none; } .cartao-painel, .caixa, .nivel { transition: none; } }
+
+/* Socializar: métrica à parte dos hábitos (não dá XP), por isso preto/branco em vez de vermelho. */
+.checkin-social { display: flex; gap: 10px; align-items: center; padding-top: 10px; margin-top: 4px; border-top: 1px dashed var(--borda); }
+.checkin-social label { cursor: pointer; }
+.grade-habitos .linha-social th, .grade-habitos .linha-social td { padding-top: 8px; }
+.celula-habito.social { border-radius: 50%; }
+.celula-habito.social.feito { background: var(--texto); }
+
+/* ---- perfil ---- */
+label.botao { font: inherit; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border-radius: var(--raio-p); padding: 8px 16px; font-weight: 600; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto); }
+label.botao:hover { border-color: var(--primaria); }
+input.sr:focus-visible + label.botao { outline: 3px solid var(--foco); outline-offset: 2px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; display: inline-grid; place-items: center; background: var(--superficie-2); color: var(--texto-suave); font-weight: 800; }
+.avatar .ico { width: 55%; height: 55%; }
+.perfil-topo { display: inline-flex; border-radius: 50%; padding: 2px; border: 2px solid transparent; text-decoration: none; }
+.perfil-topo:hover, .perfil-topo[aria-current] { border-color: var(--primaria); }
+.avatar-topo { width: 32px; height: 32px; font-size: .9rem; }
+.avatar-grande { width: 132px; height: 132px; border-radius: 12px; font-size: 3rem; border: 3px solid var(--superficie); box-shadow: var(--sombra-forte); }
+
+/* Capa no estilo de perfil de jogo: imagem larga ao fundo, foto e nome por cima. */
+.perfil-capa { position: relative; border-radius: var(--raio); overflow: hidden; min-height: 240px; display: flex; align-items: flex-end; margin-bottom: 20px;
+  background: radial-gradient(120% 140% at 0% 0%, #d1142c 0%, #5a0710 45%, #0b0b0b 100%); color: #fff; box-shadow: var(--sombra); }
+.perfil-capa-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.perfil-capa::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 30%, rgb(0 0 0 / .78)); pointer-events: none; }
+.perfil-identidade { position: relative; z-index: 1; display: flex; align-items: flex-end; gap: 18px; padding: 22px; width: 100%; flex-wrap: wrap; }
+.perfil-nome { flex: 1; min-width: 200px; }
+.perfil-nome h1 { color: #fff; text-transform: uppercase; letter-spacing: .03em; font-weight: 900; }
+.perfil-nome p { margin: 4px 0 0; color: rgb(255 255 255 / .85); }
+.perfil-nome .dica { color: rgb(255 255 255 / .75); }
+.perfil-nivel { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.perfil-nivel-num { font-size: 1.1rem; }
+.perfil-nivel-num strong { display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 8px; margin-left: 6px; border-radius: 50%; border: 2px solid #fff; font-size: 1.2rem; }
+.perfil-capa button.secundario { background: rgb(0 0 0 / .45); color: #fff; border-color: rgb(255 255 255 / .5); }
+.perfil-colunas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 340px); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .perfil-colunas { grid-template-columns: 1fr; } .perfil-nivel { align-items: flex-start; } }
+.perfil-numeros { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.perfil-numeros div { display: flex; flex-direction: column-reverse; justify-content: flex-end; }
+.perfil-numeros dd { margin: 0; font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.perfil-numeros dt { font-size: .8rem; color: var(--texto-suave); }
+.selos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.selo-conquista { display: flex; gap: 10px; align-items: center; opacity: .5; }
+.selo-conquista > span:last-child { display: flex; flex-direction: column; }
+.selo-conquista.ganho { opacity: 1; }
+.selo-icone { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--superficie-2); color: var(--texto-suave); }
+.selo-conquista.ganho .selo-icone { background: var(--gradiente); color: #fff; box-shadow: 0 3px 10px var(--brilho); }
+.vitrine { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+.vitrine-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.vitrine-item .capa { width: 100%; aspect-ratio: 2 / 3; height: auto; object-fit: cover; border-radius: 8px; }
+.vitrine-item .dica { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Início: retrato (foto) + gráfico de equilíbrio lado a lado. */
+.inicio-perfil { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 18px; margin-bottom: 18px; }
+@media (max-width: 700px) { .inicio-perfil { grid-template-columns: 1fr; } }
+.retrato { position: relative; display: flex; flex-direction: column; border-radius: var(--raio); overflow: hidden; background: #0b0b0b; color: #fff; text-decoration: none; box-shadow: var(--sombra); border: 1px solid var(--borda); min-height: 300px; }
+.retrato:hover { border-color: var(--primaria); }
+.retrato-foto { flex: 1; width: 100%; min-height: 220px; object-fit: cover; border-radius: 0; display: flex; }
+.retrato-foto.sem-foto { flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: radial-gradient(circle at 30% 20%, #5a0710, #0b0b0b 70%); color: rgb(255 255 255 / .8); }
+.retrato-foto.sem-foto .ico { width: 64px; height: 64px; }
+.retrato-foto.sem-foto .dica { color: rgb(255 255 255 / .75); }
+.retrato-nivel { position: absolute; top: 10px; left: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--gradiente); color: #fff; font-weight: 800; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
+.retrato-nivel .ico { fill: currentColor; width: 14px; height: 14px; }
+.retrato-texto { display: flex; flex-direction: column; padding: 12px 14px; background: #0b0b0b; border-top: 3px solid #d1142c; }
+.retrato-texto strong { text-transform: uppercase; letter-spacing: .04em; }
+.retrato-texto span { font-size: .85rem; color: rgb(255 255 255 / .75); }
+
+/* Gráfico de radar (equilíbrio). Um só conjunto de dados, em vermelho; grade recessiva. */
+.radar-figura { margin: 0; display: grid; grid-template-columns: minmax(240px, 380px) minmax(0, 1fr); gap: 8px 20px; align-items: center; }
+@media (max-width: 900px) { .radar-figura { grid-template-columns: 1fr; } }
+.radar { width: 100%; height: auto; overflow: visible; }
+.radar-anel { fill: none; stroke: var(--borda); stroke-width: 1; }
+.radar-anel.externo { stroke: var(--texto-suave); stroke-opacity: .5; }
+.radar-eixo { stroke: var(--borda); stroke-width: 1; }
+.radar-area { fill: var(--primaria); fill-opacity: .22; stroke: var(--primaria); stroke-width: 2; stroke-linejoin: round; transform-origin: 150px 150px; }
+.radar-ponto { fill: var(--primaria); stroke: var(--superficie); stroke-width: 2; }
+.radar-ponto:hover { r: 7; }
+.radar-rotulo { font-size: 12px; fill: var(--texto); }
+.radar-nome { font-weight: 700; }
+.radar-valor { fill: var(--texto-suave); }
+.radar-legenda { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: .88rem; color: var(--texto-suave); }
+.radar-legenda strong { color: var(--texto); }
