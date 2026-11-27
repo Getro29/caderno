@@ -46,14 +46,15 @@ App.entrada = (() => {
           onclick: () => { if (App.confirmar('Mover esta captura para a lixeira?')) descartar(d); } }, App.icone('lixeira'))));
   }
 
-  function render(container) {
+  // Seção usada na página de Tarefas: captura rápida + o que está esperando para ser organizado.
+  function secao() {
     const docs = todas();
-    container.replaceChildren(
-      el('header', { class: 'cabecalho-tela' }, el('h1', { text: 'Entrada' })),
-      el('p', { class: 'resumo', text: 'Jogue aqui o que vier à cabeça. Depois transforme em tarefa ou nota.' }),
+    return el('section', { class: 'secao-entrada', 'aria-labelledby': 'titulo-entrada' },
+      el('h2', { id: 'titulo-entrada', text: docs.length ? `Entrada (${docs.length})` : 'Entrada' }),
+      el('p', { class: 'dica', text: 'Jogue aqui o que vier à cabeça. Depois transforme em tarefa ou nota.' }),
       formulario(),
       docs.length ? el('ul', { class: 'lista-capturas' }, docs.map(item)) : el('p', { class: 'vazio', text: 'Entrada vazia.' }));
   }
 
-  return { render, formulario, todas };
+  return { secao, formulario, todas };
 })();

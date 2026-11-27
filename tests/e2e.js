@@ -8,7 +8,13 @@ const GOODREADS_CSV = [
   'Book Id,Title,Author,ISBN,ISBN13,My Rating,Number of Pages,Year Published,Original Publication Year,Date Read,Date Added,Bookshelves,Exclusive Shelf,My Review',
   '1,Dom Casmurro,Machado de Assis,"=""""","=""9788535910663""",4,256,2016,1899,2024/03/02,2024/01/01,,read,',
   '2,"O Cortiço",Aluísio Azevedo,"=""""","=""""",0,300,2010,1890,,2024/01/01,"classicos, to-read",to-read,"Dizem que é bom<br/>mesmo"',
+  '3,Vidas Secas,Graciliano Ramos,"=""""","=""9788501001234""",0,176,2019,1938,,2024/01/01,,currently-reading,',
 ].join('\n') + '\n';
+
+const z = n => String(n).padStart(2, '0');
+const isoLocal = d => `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+const hojeISO = isoLocal(new Date());
+const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return d; };
 
 (async () => {
   const browser = await chromium.launch();
@@ -16,7 +22,7 @@ const GOODREADS_CSV = [
   const erros = [];
   page.on('pageerror', e => erros.push(e.message));
   // O 503 do catálogo derrubado de propósito (abaixo) não conta como erro do app.
-  page.on('console', m => { if (m.type() === 'error' && !/status of 503/.test(m.text())) erros.push(m.text()); });
+  page.on('console', m => { if (m.type() === 'error' && !/status of (503|404)/.test(m.text())) erros.push(m.text()); });
   page.on('dialog', d => d.accept());
 
   const json = body => ({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(body) });
@@ -39,6 +45,21 @@ const GOODREADS_CSV = [
   await page.route('https://api.tvmaze.com/**', r => r.fulfill(json([])));
   await page.route('https://itunes.apple.com/**', r => r.fulfill(json({ results: [] })));
   await page.route('https://capas.exemplo/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: png }));
+  // Agendas esportivas simuladas: um jogo hoje às 23:00 (para o sino e o briefing).
+  const ano = new Date().getFullYear();
+  await page.route('https://api.jolpi.ca/**', r => r.fulfill(json({ MRData: { RaceTable: { Races: r.request().url().includes(`/${ano}.json`) ? [
+    { raceName: 'Brazilian Grand Prix', date: hojeISO, time: hojeAs(23, 0).toISOString().slice(11, 19) + 'Z', Qualifying: { date: hojeISO, time: hojeAs(22, 0).toISOString().slice(11, 19) + 'Z' } }] : [] } } })));
+  await page.route('https://site.api.espn.com/**', r => {
+    const u = r.request().url();
+    if (u.includes('/nfl/scoreboard')) return r.fulfill(json({ events: [{ date: hojeAs(21, 15).toISOString(), week: { number: 13 }, competitions: [{ competitors: [
+      { homeAway: 'home', team: { shortDisplayName: 'Ravens' } }, { homeAway: 'away', team: { shortDisplayName: 'Chiefs' } }] }] }] }));
+    if (/\/teams$/.test(u.split('?')[0])) return r.fulfill(json({ sports: [{ leagues: [{ teams: [
+      { team: { id: '2022', displayName: 'Cruzeiro' } }, { team: { id: '359', displayName: 'Arsenal' } }, { team: { id: '83', displayName: 'Barcelona' } }] }] }] }));
+    if (u.includes('/teams/359/schedule') && u.includes('eng.1')) return r.fulfill(json({ events: [{ id: 'g1', date: hojeAs(17, 30).toISOString(), competitions: [{ competitors: [
+      { homeAway: 'home', team: { displayName: 'Arsenal' } }, { homeAway: 'away', team: { displayName: 'Chelsea' } }] }] }] }));
+    return r.fulfill(json({ events: [] }));
+  });
+  await page.clock.install();
   await page.addInitScript(() => { window.showDirectoryPicker = async () => navigator.storage.getDirectory(); });
   await page.goto(URL);
 
@@ -54,10 +75,17 @@ const GOODREADS_CSV = [
   await page.getByRole('button', { name: 'Escolher pasta' }).click();
   await page.getByRole('heading', { name: /Bom dia|Boa tarde|Boa noite/ }).waitFor();
 
-  // captura rápida
+  await page.getByRole('heading', { name: 'Briefing do dia' }).waitFor();
+
+  // captura rápida (agora na página de Tarefas) e timeboxing do dia
+  await page.goto(URL + '#/tarefas');
   await page.getByLabel('Captura rápida').fill('Comprar café\ne pão');
   await page.getByRole('button', { name: 'Guardar' }).click();
-  await page.getByText('1').first().waitFor();
+  await page.getByRole('heading', { name: 'Entrada (1)' }).waitFor();
+  await page.getByLabel('07:00', { exact: true }).fill('Academia');
+  await page.getByLabel('07:00', { exact: true }).press('Enter');
+  await page.getByLabel('Feito às 07:00').check();
+  await page.waitForTimeout(300);
 
   // tarefas
   await page.goto(URL + '#/tarefas');
@@ -107,7 +135,7 @@ const GOODREADS_CSV = [
   await page.getByRole('button', { name: 'Importar do Goodreads' }).click();
   const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Escolher arquivo' }).click()]);
   await fc.setFiles({ name: 'goodreads_library_export.csv', mimeType: 'text/csv', buffer: Buffer.from(GOODREADS_CSV) });
-  await page.getByText(/Goodreads: 1 livro\(s\) novo\(s\), 1 atualizado/).waitFor();
+  await page.getByText(/Goodreads: 2 livro\(s\) novo\(s\), 1 atualizado/).waitFor();
   await page.getByRole('button', { name: /Quero ler \(1\)/ }).click();
   await page.getByRole('button', { name: /O Cortiço/ }).waitFor();
 
@@ -146,7 +174,82 @@ const GOODREADS_CSV = [
   await page.getByRole('button', { name: 'Salvar' }).click();
   await page.getByRole('button', { name: /3 de dezembro de 2026.*1 evento/ }).waitFor();
   await page.getByRole('button', { name: /25 de dezembro de 2026.*Natal/ }).waitFor();
+  // agendas: F1, NFL, futebol, vestibulares e .ics
+  if (!(await page.locator('details.agendas').evaluate(d => d.open))) await page.getByText('Esportes, vestibulares e outros calendários').click();
+  for (const nome of ['Fórmula 1', 'NFL', 'Futebol', 'Vestibulares']) {
+    await page.locator('.lista-agendas li', { hasText: nome }).getByRole('button', { name: 'Buscar' }).click();
+    await page.locator('.lista-agendas li', { hasText: nome }).getByText(/compromisso\(s\) · atualizado/).waitFor();
+  }
+  const [fi] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Importar arquivo .ics' }).click()]);
+  await fi.setFiles({ name: 'Provas da faculdade.ics', mimeType: 'text/calendar', buffer: Buffer.from(
+    'BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDTSTART;VALUE=DATE:20261210\r\nSUMMARY:Prova de C\r\n álculo\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n') });
+  await page.getByText('1 compromisso(s) importado(s)').waitFor();
+  await page.getByRole('button', { name: /10 de dezembro de 2026.*1 jogo/ }).click();
+  await page.locator('.painel-dia', { hasText: 'Prova de Cálculo' }).waitFor();
   await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/calendario.png', fullPage: true });
+
+  // hábitos: check-in do dia
+  await page.goto(URL + '#/habitos');
+  await page.getByRole('checkbox', { name: 'Leitura' }).check();
+  await page.getByRole('checkbox', { name: 'Bíblia' }).check();
+  await page.getByLabel('Horas de sono (noite anterior)').fill('7.5');
+  await page.getByLabel('Horas de sono (noite anterior)').press('Tab');
+  await page.getByLabel('Como foi o dia').selectOption('4');
+  await page.getByText('2/1 dias').or(page.getByText(/1\/\d+ dias · \d+%/).first()).first().waitFor();
+  await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/habitos.png', fullPage: true });
+
+  // dieta: metas, alimento, peso, receita
+  await page.goto(URL + '#/dieta');
+  await page.getByRole('button', { name: 'Metas' }).click();
+  await page.getByLabel('Calorias (kcal)').fill('2000');
+  await page.getByLabel('Proteína (g)').fill('150');
+  await page.getByRole('button', { name: 'Salvar metas' }).click();
+  await page.getByText('Metas salvas.').waitFor();
+  await page.getByRole('button', { name: 'Hoje', exact: true }).click();
+  await page.getByLabel('Refeição', { exact: true }).selectOption('Café da manhã');
+  await page.getByLabel('Alimento', { exact: true }).fill('Ovos | mexidos');
+  await page.getByLabel('Calorias (kcal)').fill('220');
+  await page.getByLabel('Proteína (g)').fill('18');
+  await page.getByRole('button', { name: 'Adicionar ao dia' }).click();
+  await page.getByText('220 de 2000 kcal (11%)').waitFor();
+  await page.getByLabel('Peso neste dia (kg)').fill('80.5');
+  await page.getByLabel('Peso neste dia (kg)').press('Tab');
+  await page.getByText('80.5 kg').first().waitFor();
+  await page.getByRole('button', { name: 'Receitas' }).click();
+  await page.getByRole('button', { name: '+ Nova receita' }).click();
+  await page.getByLabel('Nome').fill('Panqueca de banana');
+  await page.getByLabel('Calorias (kcal)').fill('300');
+  await page.getByLabel('Proteína (g)').fill('20');
+  await page.getByRole('button', { name: 'Salvar' }).click();
+  await page.getByRole('button', { name: /Panqueca de banana/ }).click();
+  await page.getByLabel('Porções comidas').fill('2');
+  await page.getByRole('button', { name: 'Adicionar ao dia de hoje' }).click();
+  await page.getByRole('button', { name: 'Hoje', exact: true }).click();
+  await page.getByText('820 de 2000 kcal (41%)').waitFor();
+  await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/dieta.png', fullPage: true });
+
+  // estudo: temporizador com pausa, checklist, timeboxing e simulado
+  await page.goto(URL + '#/estudo');
+  await page.getByRole('button', { name: '25 min' }).click();
+  await page.getByLabel('O que vou estudar').fill('Funções');
+  await page.getByRole('button', { name: 'Começar' }).click();
+  await page.getByRole('button', { name: 'Pausar' }).click();
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await page.locator('.selo-tempo').waitFor();
+  await page.getByLabel('Nova tarefa de estudo').fill('Revisar funções');
+  await page.getByLabel('Nova tarefa de estudo').press('Enter');
+  await page.getByRole('checkbox', { name: 'Revisar funções' }).check();
+  await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/estudo.png', fullPage: true });
+  await page.clock.fastForward('26:00');
+  await page.getByText(/Tempo esgotado: Funções! 25 min registrados/).waitFor();
+  await page.getByRole('button', { name: 'Simulados' }).click();
+  await page.getByRole('button', { name: '+ Novo simulado' }).click();
+  await page.getByLabel('Total de questões').fill('45');
+  await page.getByLabel('Acertos').fill('36');
+  await page.getByText('80% de acerto (36 de 45, 9 erro(s))').waitFor();
+  await page.getByLabel('Prova / vestibular').fill('ENEM');
+  await page.getByRole('button', { name: 'Salvar' }).click();
+  await page.getByText('80% de acerto no total').waitFor();
 
   // arte: envio de imagem
   await page.goto(URL + '#/arte');
@@ -160,13 +263,31 @@ const GOODREADS_CSV = [
   await page.locator('.ver-arte img.arte-grande').waitFor();
   await page.keyboard.press('Escape');
 
-  // entrada -> tarefa
+  // entrada -> tarefa (o endereço antigo #/entrada abre Tarefas)
   await page.goto(URL + '#/entrada');
+  await page.getByRole('heading', { name: 'Tarefas e prazos' }).waitFor();
   await page.getByRole('button', { name: 'Virar tarefa' }).click();
   await page.getByRole('button', { name: 'Salvar' }).click();
   await page.getByText('Entrada vazia').waitFor();
 
+  // Nenhuma página pode mostrar "null" ou "undefined" soltos na tela.
+  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'notas', 'habitos', 'dieta', 'leitura', 'entretenimento', 'arte']) {
+    await page.goto(URL + '#/' + rota);
+    await page.waitForTimeout(150);
+    const ruins = await page.evaluate(() => {
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const out = []; while (w.nextNode()) if (/^\s*(null|undefined|NaN|\[object \w+\])\s*$/.test(w.currentNode.textContent)) out.push(w.currentNode.parentElement.outerHTML.slice(0, 120));
+      return out;
+    });
+    if (ruins.length) throw new Error(`texto quebrado em #/${rota}: ${ruins.join(' | ')}`);
+  }
+
   await page.goto(URL + '#/inicio');
+  await page.getByText(/Para assistir: .*Arsenal x Chelsea/).waitFor();
+  await page.locator('.carrossel', { hasText: 'Vidas Secas' }).waitFor();
+  const sino = page.getByRole('button', { name: /Avisos: \d+ para hoje/ });
+  await sino.click();
+  await page.getByRole('region', { name: 'Avisos de hoje' }).getByText(/Brazilian GP · Corrida/).waitFor();
   await page.waitForTimeout(300);
   await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/painel.png', fullPage: true });
 

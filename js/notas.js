@@ -157,7 +157,7 @@ App.notas = (() => {
       el('header', { class: 'cabecalho-tela' },
         el('h1', { text: 'Notas de estudo' }),
         el('button', { type: 'button', text: '+ Nova nota', onclick: () => editar(null) })),
-      rev ? el('p', { class: 'aviso suave', text: `${rev} nota(s) para revisar hoje.` }) : null,
+      rev ? el('p', { class: 'aviso suave', text: `${rev} nota(s) para revisar hoje.` }) : '',
       chips,
       el('div', { class: 'duas-colunas' },
         el('div', { class: 'coluna-lista' },

@@ -89,6 +89,7 @@ App.calendario = (() => {
       const iso = App.somarDias(App.hoje(), i);
       for (const f of datasDoDia(iso).filter(x => x.tipo !== 'comemorativa')) out.push({ data: iso, titulo: f.nome, tipo: f.tipo });
       for (const e of eventosDoDia(iso)) out.push({ data: iso, titulo: e.meta.titulo || e.nome, hora: e.meta.hora, tipo: 'evento', doc: e });
+      for (const a of App.agenda.doDia(iso)) out.push({ data: iso, titulo: a.titulo, hora: a.hora, tipo: a.categoria });
     }
     return out;
   }
@@ -164,7 +165,8 @@ App.calendario = (() => {
     const datas = datasDoDia(iso);
     const evs = eventosDoDia(iso);
     const prazos = prazosDoDia(iso);
-    const vazio = !datas.length && !evs.length && !prazos.length;
+    const externos = App.agenda.doDia(iso);
+    const vazio = !datas.length && !evs.length && !prazos.length && !externos.length;
     return el('section', { class: 'painel-dia', 'aria-live': 'polite' },
       el('header', {},
         el('h2', { text: maiuscula(fmtLongo(iso)) }),
@@ -177,7 +179,10 @@ App.calendario = (() => {
           el('span', { class: 'dica', text: [horario(e.meta), e.meta.local, e.meta.repetir && e.meta.repetir !== 'nao' ? REPETIR[e.meta.repetir].toLowerCase() : null].filter(Boolean).join(' · ') }))),
         prazos.map(t => el('li', {},
           el('button', { type: 'button', class: 'link', text: t.meta.titulo || t.nome, onclick: () => App.tarefas.editar(t) }),
-          el('span', { class: 'selo info', text: 'Prazo de tarefa' })))));
+          el('span', { class: 'selo info', text: 'Prazo de tarefa' }))),
+        externos.map(a => el('li', {},
+          el('span', { text: a.titulo }),
+          el('span', { class: 'dica', text: [a.hora || 'Dia inteiro', a.agenda].join(' · ') })))));
   }
 
   function grade(container) {
@@ -194,14 +199,17 @@ App.calendario = (() => {
         const datas = datasDoDia(iso);
         const evs = eventosDoDia(iso);
         const prazos = prazosDoDia(iso);
+        const externos = App.agenda.doDia(iso);
         const feriado = datas.find(x => x.tipo === 'feriado');
         const marcas = [
           ...datas.map(x => el('span', { class: 'marca-dia ' + x.tipo, text: x.nome })),
           ...evs.slice(0, 3).map(e => el('span', { class: 'marca-dia evento', text: (e.meta.hora ? e.meta.hora + ' ' : '') + (e.meta.titulo || e.nome) })),
           evs.length > 3 ? el('span', { class: 'marca-dia mais', text: `+${evs.length - 3}` }) : null,
           prazos.length ? el('span', { class: 'marca-dia prazo', text: prazos.length === 1 ? 'Prazo: ' + (prazos[0].meta.titulo || prazos[0].nome) : `${prazos.length} prazos` }) : null,
+          ...externos.slice(0, 2).map(a => el('span', { class: 'marca-dia ' + a.categoria, text: (a.hora ? a.hora + ' ' : '') + a.titulo.replace(/^(Futebol · |Previsão: )/, '') })),
+          externos.length > 2 ? el('span', { class: 'marca-dia mais', text: `+${externos.length - 2}` }) : null,
         ];
-        const partes = [fmtLongo(iso), ...datas.map(x => x.nome), evs.length ? `${evs.length} evento(s)` : '', prazos.length ? `${prazos.length} prazo(s)` : ''].filter(Boolean);
+        const partes = [fmtLongo(iso), ...datas.map(x => x.nome), evs.length ? `${evs.length} evento(s)` : '', prazos.length ? `${prazos.length} prazo(s)` : '', externos.length ? `${externos.length} jogo(s) ou aviso(s)` : ''].filter(Boolean);
         celulas.push(el('td', { class: [fora ? 'fora' : '', iso === hoje ? 'hoje' : '', feriado ? 'feriado' : '', iso === estado.dia ? 'selecionado' : ''].join(' ').trim() || null },
           el('button', {
             type: 'button', class: 'dia', 'data-dia': iso, 'aria-label': partes.join(', '),
@@ -265,8 +273,10 @@ App.calendario = (() => {
       el('div', { class: 'legenda', 'aria-hidden': 'true' },
         el('span', { class: 'marca-dia feriado', text: 'Feriado' }), el('span', { class: 'marca-dia facultativo', text: 'Ponto facultativo' }),
         el('span', { class: 'marca-dia comemorativa', text: 'Comemorativa' }), el('span', { class: 'marca-dia evento', text: 'Seu evento' }),
-        el('span', { class: 'marca-dia prazo', text: 'Prazo de tarefa' })),
+        el('span', { class: 'marca-dia prazo', text: 'Prazo de tarefa' }), el('span', { class: 'marca-dia esporte', text: 'Esporte' }),
+        el('span', { class: 'marca-dia vestibular', text: 'Vestibular' })),
       el('div', { class: 'calendario' }, el('div', { class: 'rolagem-mes' }, grade(container)), painelDia(estado.dia)),
+      App.agenda.secao(),
       feriadosDoAno());
   }
 

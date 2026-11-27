@@ -4,15 +4,17 @@
   const { el } = App;
   const ROTAS = {
     inicio: { titulo: 'Início', modulo: () => App.painel },
-    entrada: { titulo: 'Entrada', modulo: () => App.entrada },
     tarefas: { titulo: 'Tarefas', modulo: () => App.tarefas },
     calendario: { titulo: 'Calendário', modulo: () => App.calendario },
+    estudo: { titulo: 'Estudo', modulo: () => App.estudo },
     notas: { titulo: 'Notas', modulo: () => App.notas },
+    habitos: { titulo: 'Hábitos', modulo: () => App.habitos },
+    dieta: { titulo: 'Dieta', modulo: () => App.dieta },
     leitura: { titulo: 'Leitura', modulo: () => App.livros },
     entretenimento: { titulo: 'Entretenimento', modulo: () => App.entretenimento },
     arte: { titulo: 'Arte', modulo: () => App.arte },
   };
-  const APELIDOS = { livros: 'leitura' }; // endereços antigos continuam funcionando
+  const APELIDOS = { livros: 'leitura', entrada: 'tarefas' }; // endereços antigos continuam funcionando
   const principal = document.getElementById('principal');
   const nav = document.getElementById('nav');
   const infoPasta = document.getElementById('info-pasta');
@@ -33,6 +35,7 @@
     const r = ROTAS[rotaAtual()];
     document.title = `${r.titulo} · Caderno`;
     r.modulo().render(principal);
+    App.notificacoes.desenhar();
     infoPasta.replaceChildren(
       el('span', { title: 'Pasta conectada', text: 'Pasta: ' + App.store.nomePasta() }),
       el('button', { type: 'button', class: 'icone', title: 'Recarregar arquivos do disco', 'aria-label': 'Recarregar arquivos do disco',
@@ -57,17 +60,18 @@
     const salva = await App.store.pastaSalva();
     principal.replaceChildren(el('section', { class: 'boas-vindas' },
       el('h1', { text: 'Bem-vindo ao Caderno' }),
-      el('p', { text: 'Suas tarefas, notas, leituras, filmes, eventos e referências de arte ficam como arquivos .md numa pasta do seu computador — nada vai para a internet. Pode ser o seu vault do Obsidian.' }),
+      el('p', { text: 'Suas tarefas, estudos, hábitos, dieta, notas, leituras, filmes, eventos e referências de arte ficam como arquivos .md numa pasta do seu computador — nada vai para a internet. Pode ser o seu vault do Obsidian.' }),
       el('div', { class: 'acoes' },
         salva ? el('button', { type: 'button', text: `Reabrir “${salva.name}”`, onclick: async () => {
           if (!(await App.tentar(() => App.store.reconectar(true), 'Não foi possível reabrir'))) App.toast('Permissão não concedida.', 'erro');
         } }) : null,
         el('button', { type: 'button', class: salva ? 'secundario' : '', text: salva ? 'Escolher outra pasta' : 'Escolher pasta', onclick: escolher })),
-      el('p', { class: 'dica', text: 'O navegador vai pedir permissão para ler e editar a pasta. Serão criadas subpastas (Tarefas, Notas, Livros, Entretenimento, Calendario, Arte…) conforme você usar.' })));
+      el('p', { class: 'dica', text: 'O navegador vai pedir permissão para ler e editar a pasta. Serão criadas subpastas (Tarefas, Notas, Diario, Dieta, Estudo, Livros, Calendario, Arte…) conforme você usar.' })));
   }
 
-  App.on('dados', () => {
+  App.on('dados', info => {
     if (App.emLote) return; // importações em lote redesenham uma vez só, no fim
+    if (info?.inline) return; // a própria tela já se atualizou
     // Não redesenha a tela por baixo de um diálogo aberto com edição em andamento.
     if (document.querySelector('dialog[open]')) { App.pendenteRender = true; return; }
     renderizar();

@@ -16,6 +16,11 @@ window.App = (() => {
     buscar: 'M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14z|M20 20l-4-4',
     imagem: 'M4 5h16v14H4z|M4 16l5-5 4 4 2-2 5 5|M15 9h.01',
     mais: 'M12 5v14|M5 12h14',
+    cima: 'M6 15l6-6 6 6',
+    baixo: 'M6 9l6 6 6-6',
+    sino: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4l2-2z|M10 20a2 2 0 0 0 4 0',
+    play: 'M8 5v14l11-7z',
+    pausa: 'M8 5v14|M16 5v14',
   };
 
   const App = {
@@ -104,7 +109,7 @@ window.App = (() => {
         else if (k === 'checked') no.checked = !!v;
         else no.setAttribute(k, v === true ? '' : v);
       }
-      for (const f of filhos.flat()) {
+      for (const f of filhos.flat(Infinity)) {
         if (f == null || f === false) continue;
         no.append(f instanceof Node ? f : document.createTextNode(String(f)));
       }
@@ -158,6 +163,33 @@ window.App = (() => {
       for (const d of (ICONES[nome] || '').split('|')) {
         const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); svg.append(p);
       }
+      return svg;
+    },
+
+    // Gráfico de linha em SVG. pontos: [{ rotulo, valor }]. Acessível: descrição em aria-label.
+    grafico(pontos, { descricao = '', unidade = '', min, max, meta } = {}) {
+      const NS = 'http://www.w3.org/2000/svg';
+      const L = 600, A = 200, M = { e: 44, d: 12, t: 12, b: 26 };
+      const vals = pontos.map(p => p.valor);
+      let lo = min ?? Math.min(...vals, meta ?? Infinity); let hi = max ?? Math.max(...vals, meta ?? -Infinity);
+      if (lo === hi) { lo -= 1; hi += 1; }
+      const folga = (hi - lo) * 0.08; if (min == null) lo -= folga; if (max == null) hi += folga;
+      const x = i => M.e + (pontos.length < 2 ? (L - M.e - M.d) / 2 : (i * (L - M.e - M.d)) / (pontos.length - 1));
+      const y = v => M.t + (1 - (v - lo) / (hi - lo)) * (A - M.t - M.b);
+      const svg = document.createElementNS(NS, 'svg');
+      svg.setAttribute('viewBox', `0 0 ${L} ${A}`); svg.setAttribute('class', 'grafico');
+      svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', descricao);
+      const no = (tag, at, texto) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(at)) n.setAttribute(k, v); if (texto != null) n.textContent = texto; svg.append(n); return n; };
+      const fmt = v => (Math.abs(hi - lo) < 10 ? v.toFixed(1) : Math.round(v)) + unidade;
+      for (const v of [lo, (lo + hi) / 2, hi]) {
+        no('line', { x1: M.e, x2: L - M.d, y1: y(v), y2: y(v), class: 'grafico-grade' });
+        no('text', { x: M.e - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'grafico-texto' }, fmt(v));
+      }
+      if (meta != null) no('line', { x1: M.e, x2: L - M.d, y1: y(meta), y2: y(meta), class: 'grafico-meta' });
+      if (pontos.length > 1) no('polyline', { points: pontos.map((p, i) => `${x(i)},${y(p.valor)}`).join(' '), class: 'grafico-linha' });
+      pontos.forEach((p, i) => no('circle', { cx: x(i), cy: y(p.valor), r: 3.5, class: 'grafico-ponto' }).append(Object.assign(document.createElementNS(NS, 'title'), { textContent: `${p.rotulo}: ${fmt(p.valor)}` })));
+      const passo = Math.max(1, Math.ceil(pontos.length / 6));
+      pontos.forEach((p, i) => { if (i % passo === 0 || i === pontos.length - 1) no('text', { x: x(i), y: A - 6, 'text-anchor': 'middle', class: 'grafico-texto' }, p.rotulo); });
       return svg;
     },
 

@@ -2,7 +2,7 @@
 // Único ponto de acesso aos arquivos. Interface genérica (listar, ler, gravar, criar, mover,
 // moverParaLixeira) para que um adaptador futuro (ex.: sincronização no celular) a substitua.
 App.store = (() => {
-  const PASTAS = ['Entrada', 'Tarefas', 'Notas', 'Livros', 'Entretenimento', 'Calendario', 'Arte', 'Caderno'];
+  const PASTAS = ['Entrada', 'Tarefas', 'Notas', 'Livros', 'Entretenimento', 'Calendario', 'Arte', 'Diario', 'Timebox', 'Dieta', 'Estudo', 'Caderno'];
   const cache = new Map(); // caminho -> doc
   let raiz = null;
 
@@ -123,7 +123,30 @@ App.store = (() => {
     try { await w.write(texto); await w.close(); } catch (e) { await w.abort?.(); throw e; }
   }
 
-  async function gravar(caminho, meta, corpo) {
+  // Gravações no mesmo arquivo entram numa fila, para cliques rápidos não se atropelarem.
+  // opcoes.inline: a tela que gravou já se atualizou sozinha; não redesenhar a página
+  // (senão o campo em edição perderia o foco). Outros ouvintes (sino, contadores) ainda são avisados.
+  const filas = new Map();
+  function gravar(caminho, meta, corpo, opcoes = {}) {
+    const anterior = filas.get(caminho) || Promise.resolve();
+    const atual = anterior.catch(() => {}).then(() => gravarAgora(caminho, meta, corpo, opcoes));
+    filas.set(caminho, atual);
+    atual.finally(() => { if (filas.get(caminho) === atual) filas.delete(caminho); }).catch(() => {});
+    return atual;
+  }
+  // Alteração calculada sobre a versão mais recente do arquivo, já dentro da fila:
+  // fn(docAtual ou null) devolve { meta, corpo }. Evita que dois cliques seguidos se apaguem.
+  function alterar(caminho, fn, opcoes = {}) {
+    const anterior = filas.get(caminho) || Promise.resolve();
+    const atual = anterior.catch(() => {}).then(() => {
+      const { meta, corpo } = fn(cache.get(caminho) || null);
+      return gravarAgora(caminho, meta, corpo, opcoes);
+    });
+    filas.set(caminho, atual);
+    atual.finally(() => { if (filas.get(caminho) === atual) filas.delete(caminho); }).catch(() => {});
+    return atual;
+  }
+  async function gravarAgora(caminho, meta, corpo, opcoes) {
     const antigo = cache.get(caminho);
     if (antigo?.erro) throw new Error('arquivo com formato não reconhecido; edite-o no Obsidian');
     if (antigo) {
@@ -135,7 +158,7 @@ App.store = (() => {
     }
     await escrever(caminho, App.yaml.serializar(meta, corpo, antigo?.brutos));
     const doc = await ler(caminho);
-    App.emit('dados');
+    App.emit('dados', opcoes.inline ? { inline: true } : undefined);
     return doc;
   }
 
@@ -199,7 +222,7 @@ App.store = (() => {
 
   return {
     suportado, escolherPasta, pastaSalva, reconectar, conectado, nomePasta,
-    carregarTudo, listar, obter, ler, gravar, criar, mover, moverParaLixeira,
+    carregarTudo, listar, obter, ler, gravar, alterar, criar, mover, moverParaLixeira,
     existe, gravarBinario, urlArquivo,
   };
 })();

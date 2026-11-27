@@ -1,8 +1,9 @@
 # CLAUDE.md — Caderno (substituto local do Notion)
 
 App web estático, hospedado no **GitHub Pages** (domínio próprio depois), que roda
-**no navegador do usuário** para organizar tarefas, calendário, notas de estudo, leitura,
-entretenimento (filmes/séries/animes), uma galeria de arte e um painel gamificado. Os dados vivem como arquivos `.md` com frontmatter YAML numa pasta escolhida
+**no navegador do usuário** para organizar tarefas (com timeboxing), calendário (feriados, esportes,
+vestibulares), estudo (temporizador, simulados), hábitos, dieta, notas, leitura, entretenimento
+(filmes/séries/animes), uma galeria de arte e um Início com briefing diário. Os dados vivem como arquivos `.md` com frontmatter YAML numa pasta escolhida
 pelo usuário, compatível com um vault do Obsidian.
 
 ## Regras inegociáveis
@@ -54,9 +55,11 @@ pelo usuário, compatível com um vault do Obsidian.
 - Repositório GitHub, publicado pelo GitHub Pages a partir da branch `main` (raiz).
 - Os dados do usuário **nunca** vão para o repositório nem para o site: ficam na pasta
   local escolhida. Nada de analytics, rastreamento ou servidor próprio.
-- **Única exceção de rede:** `js/catalogo.js` consulta catálogos públicos (Google Books,
-  Open Library, IMDb, iTunes, TVmaze, AniList, Jikan) **só quando o usuário clica** em "Buscar capa" ou
-  "Completar capas", enviando apenas o título. Capas são guardadas como URL no campo `capa`.
+- **Únicas exceções de rede**, sempre **só quando o usuário clica**:
+  - `js/catalogo.js` consulta catálogos públicos (Google Books, Open Library, IMDb, iTunes,
+    TVmaze, AniList, Jikan) em "Buscar capa" / "Completar capas", enviando apenas o título.
+  - `js/agenda.js` baixa calendários esportivos em "Buscar/Atualizar" (Jolpica F1 em
+    api.jolpi.ca; ESPN em site.api.espn.com para NFL e futebol). Nada do usuário é enviado. Capas são guardadas como URL no campo `capa`.
   Goodreads e Letterboxd não têm API aberta: a sincronização é por **importação do CSV**
   que esses sites exportam (Goodreads → Export Library; Letterboxd → Settings → Data).
 - Usar só caminhos relativos (`./css/...`) para funcionar tanto em `usuario.github.io/caderno`
@@ -71,24 +74,42 @@ js/
   app.js              # cria window.App, utilitários (datas, slug, eventos)
   yaml.js             # parse/serialize de frontmatter (subconjunto de YAML)
   markdown.js         # conversor Markdown mínimo e seguro + texto puro para leitura em voz
-  store.js            # File System Access: pasta, ler/listar/gravar/mover .md, cache em memória
+  store.js            # File System Access: pasta, ler/listar/gravar/alterar/mover .md, cache em memória
   voz.js              # ditado (SpeechRecognition) e leitura (speechSynthesis)
   gamificacao.js      # por ora só registrarEvento(); regras a definir
-  entrada.js          # captura rápida (Entrada/)
-  tarefas.js          # módulo Tarefas e Prazos
+  diario.js           # check-in diário (Diario/) e lista de hábitos; estatísticas do mês
+  timebox.js          # componente de timeboxing (blocos de 30 min), usado em Tarefas e Estudo
+  entrada.js          # captura rápida (Entrada/) — exibida dentro da página Tarefas
+  tarefas.js          # página Tarefas: Entrada + tarefas + timeboxing do dia
   notas.js            # módulo Notas de Estudo
   catalogo.js         # busca de capas/dados em catálogos públicos + importação CSV Goodreads/Letterboxd
   livros.js           # página "Leitura" (App.livros; arquivos em Livros/, rota #/leitura)
   entretenimento.js   # filmes, séries e animes
   calendario.js       # mês, eventos, feriados nacionais e datas comemorativas (calculados localmente)
   arte.js             # galeria de referências (imagens em Arte/imagens/)
-  painel.js           # Início: visão do dia (gamificação entra aqui depois)
+  agenda.js           # agendas externas no calendário: F1, NFL, futebol, vestibulares, .ics
+  habitos.js          # página Hábitos: check-in, grade do mês, estatísticas
+  dieta.js            # página Dieta: refeições/macros, água, peso, metas, progresso, receitas
+  estudo.js           # página Estudo: temporizador, checklist, timeboxing, simulados
+  painel.js           # Início: briefing do dia, check-in, carrossel de capas, resumo do mês
+  notificacoes.js     # sino do cabeçalho (tarefas/eventos de hoje) e selo do temporizador
   main.js             # roteamento por hash (#/tarefas…), inicialização
 tests/e2e.js          # teste Playwright (usa OPFS no lugar da pasta real)
 ```
 
 Cada módulo de tela expõe `render(container)` e só fala com os arquivos via `App.store`.
 Nenhum módulo acessa a File System Access API diretamente fora de `store.js`.
+
+Convenções importantes de gravação:
+- Telas com edição direta (timeboxing, check-in, dieta, checklist) gravam com
+  `{ inline: true }`: o arquivo é salvo sem redesenhar a página (o campo não perde o foco).
+- Quando o novo valor depende do arquivo atual (marcar hábito, somar água, somar minutos),
+  usar `App.store.alterar(caminho, doc => ({ meta, corpo }))`, que roda na fila do arquivo
+  sobre a versão mais recente. Gravar a partir de uma cópia antiga perde cliques rápidos.
+- Listas estruturadas vão no **corpo** em Markdown (o YAML só aceita listas simples e mapas de
+  1 nível). Ao reescrever o corpo, manter as linhas que não seguem o formato (edições no Obsidian).
+- `App.el` ignora `null`, mas `replaceChildren(null)` escreve "null" na tela: filtrar antes.
+  O teste e2e varre todas as páginas procurando "null"/"undefined" soltos.
 
 ## Formato dos arquivos na pasta do usuário
 
@@ -100,7 +121,13 @@ Nenhum módulo acessa a File System Access API diretamente fora de `store.js`.
   Entretenimento/<slug>.md
   Calendario/<AAAA-MM-DD>-<slug>.md
   Arte/<slug>.md + Arte/imagens/<slug>.<ext>
+  Calendario/Agendas/<id>.md  # f1, nfl, futebol, vestibulares, ics-<nome>
+  Diario/AAAA-MM-DD.md        # check-in do dia
+  Timebox/AAAA-MM-DD-dia.md   # e -estudo.md
+  Dieta/metas.md, Dieta/Registros/AAAA-MM-DD.md, Dieta/Receitas/<slug>.md
+  Estudo/Dias/AAAA-MM-DD.md, Estudo/Simulados/<slug>.md
   Entrada/<data-hora>.md      # capturas rápidas
+  Caderno/habitos.md          # lista de hábitos do check-in
   Caderno/progresso.md        # estado da gamificação (XP, nível, histórico)
   Caderno/missoes/AAAA-MM-DD.md
   .lixeira/
@@ -124,6 +151,19 @@ Campos obrigatórios por tipo (`tipo` sempre presente para identificar o arquivo
 - **arte:** `tipo, titulo, artista, ano, colecao, imagem (caminho na pasta) ou imagem_url,
   fonte, criado, tags` — corpo começa com `![[arquivo]]` (para o Obsidian) e segue com anotações.
   Excluir move o `.md` **e** a imagem para `.lixeira/`.
+- **agenda:** `tipo, nome, categoria (esporte|vestibular|importado), fonte, atualizado, mostrar`
+  — corpo: uma linha por compromisso `- AAAA-MM-DD HH:MM | título` (hora opcional), hora local.
+- **diario:** `tipo, data, habitos (lista de slugs feitos), sono_horas, humor (1–5), estudo_minutos`.
+- **config_habitos** (`Caderno/habitos.md`): `tipo, habitos` (lista de nomes; padrão Leitura,
+  Dieta do dia, Exercício, Bíblia). Slug do nome é a chave usada no diário.
+- **timebox:** `tipo, data, contexto (dia|estudo)` — corpo `- [ ] HH:MM o que fazer` ([x] = feito).
+- **metas_dieta:** `tipo, calorias, proteina_g, carboidrato_g, gordura_g, agua_ml, peso_meta_kg`.
+- **dieta_dia:** `tipo, data, peso_kg, agua_ml, calorias, proteina_g, carboidrato_g, gordura_g`
+  (totais recalculados) — corpo: tabela `| Refeição | Alimento | kcal | Proteína (g) | Carboidrato (g) | Gordura (g) |`.
+- **receita:** `tipo, titulo, porcoes, tempo_min, calorias, proteina_g, carboidrato_g, gordura_g
+  (por porção), tags, criado` — ingredientes e preparo no corpo.
+- **estudo_dia:** `tipo, data` — corpo `- [ ] item` (checklist do dia).
+- **simulado:** `tipo, titulo, data, prova, materia, questoes, acertos, percentual, tempo_min, tags`.
 - **progresso:** `tipo, xp_total, xp_por_area {produtividade, estudos, leitura}, sequencia_dias,
   ultimo_dia_ativo`
 
@@ -160,6 +200,24 @@ Repositório: https://github.com/Getro29/caderno. O usuário fala português e n
 programador: explicar em linguagem simples, sem jargão.
 
 **Já feito (v1):**
+- Navegação: Início, Tarefas, Calendário, Estudo, Notas, Hábitos, Dieta, Leitura,
+  Entretenimento, Arte. Endereços antigos `#/entrada` e `#/livros` redirecionam.
+- Tarefas = Entrada (captura) + lista/quadro de tarefas + timeboxing do dia (30 em 30 min).
+- Estudo: temporizador por duração ou "até HH:MM", com pausa/continuar, aviso sonoro, selo no
+  cabeçalho, estado no sessionStorage (é estado de interface); minutos concluídos somam no
+  diário. Checklist do dia (traz pendentes de ontem), timeboxing de estudo, simulados (% de
+  acerto, evolução, por matéria).
+- Hábitos: check-in (hábitos, sono, humor), grade do mês clicável, estatísticas, sequências.
+  O mês conta a partir do primeiro check-in já feito.
+- Dieta: refeições com kcal/macros, água, peso, metas com barras, gráfico de peso e calorias,
+  receitas com "adicionar ao dia".
+- Calendário: agendas de F1 (todas as sessões), NFL (temporada), futebol (Cruzeiro, Barcelona,
+  Arsenal em liga, copas e Champions/Libertadores), previsões de vestibulares/ENEM/SISU
+  (marcadas como "Previsão", com site oficial) e importação de .ics.
+- Início: briefing do dia em texto (agenda, tarefas, hábitos de ontem, sono/humor, dieta, peso,
+  estudo, mês; botão Ouvir), check-in rápido, carrossel de capas em Lendo/Assistindo (troca a
+  cada 4 s, pausa no foco/mouse e com movimento reduzido), hábitos do mês.
+- Sino no cabeçalho: tarefas atrasadas/de hoje, compromissos do dia e o que vence amanhã.
 - Cabeçalho de navegação no topo; sem emojis (ícones SVG).
 - Calendário (mês com feriados nacionais, pontos facultativos e datas comemorativas,
   eventos com repetição, prazos das tarefas), Entretenimento (filmes/séries/animes, capas via
@@ -168,7 +226,7 @@ programador: explicar em linguagem simples, sem jargão.
 - Entrada (captura rápida → vira tarefa ou nota), Tarefas (lista agrupada por prazo e
   quadro a-fazer/fazendo/feita), Notas (por matéria, editor Markdown com pré-visualização,
   revisão espaçada), Livros (estantes lendo/quero-ler/lidos, estrelas, resenha), Início
-  (prazos da semana, notas a revisar, lendo agora, contador da Entrada).
+  (prazos da semana, notas a revisar, contador da Entrada).
 - Ditado (ícone de microfone) em todos os campos de texto e leitura em voz alta de notas e resenhas (pt-BR).
 - Preservação de YAML desconhecido, `.lixeira/`, detecção de edição externa (Obsidian).
 - Teste e2e passando (`tests/e2e.js`). Visual atual é **provisório**.
@@ -182,12 +240,19 @@ programador: explicar em linguagem simples, sem jargão.
   MyAnimeList, iTunes), ordena por semelhança do título e categoria escolhida, e ao escolher
   um resultado ajusta a categoria. Se uma fonte falhar, as outras seguram (aviso no diálogo).
 - Feriados estaduais/municipais não são automáticos: o usuário cria evento anual.
+- Datas de vestibulares não têm fonte aberta: são **previsões** pelo calendário típico, com
+  aviso para conferir no site oficial. Não apresentar como data confirmada.
+- Times de futebol ficam em `TIMES` no `agenda.js` (id do time descoberto pela lista da liga
+  na ESPN). As APIs da ESPN e da Jolpica não foram testadas de dentro do ambiente de nuvem
+  (rede bloqueada): o e2e usa respostas simuladas. Se falharem, o caminho é importar .ics.
 - O usuário digita os dados no próprio app; a pasta escolhida serve para **salvar** (e reler
   o que foi salvo). Sugestão dada: criar `Documentos/Caderno` e, depois, abrir no Obsidian.
 - Repositório público (exigência do GitHub Pages gratuito); dados nunca vão para o repo.
 - Domínio próprio: o usuário pretende comprar; configura em Settings → Pages → Custom domain.
 
 **Pendente / próximos passos:**
+0. Confirmar no navegador do usuário que as buscas de jogos (ESPN/Jolpica) e de capas
+   funcionam de verdade; ajustar fontes se algum serviço bloquear.
 1. Definir **gamificação** (XP por área, níveis, missões diárias) **junto com a direção de
    arte** — decidir com o usuário antes de implementar.
 2. Direção de arte definitiva (substituir o estilo provisório de `css/estilo.css`).
