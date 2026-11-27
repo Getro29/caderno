@@ -49,7 +49,11 @@ App.habitos = (() => {
           return el('td', {}, el('button', {
             type: 'button', class: 'celula-habito' + (feito ? ' feito' : ''), 'aria-pressed': String(feito), disabled: d > hoje,
             'aria-label': `${h}, dia ${Number(d.slice(8))}`,
-            onclick: async () => { await salvarErro(App.diario.alternar(d, h, !feito)); render(container); },
+            'data-celula': `${d}|${App.slug(h)}`,
+            onclick: async () => {
+              await salvarErro(App.diario.alternar(d, h, !feito)); render(container);
+              if (!feito) App.animacao.confirmar(container.querySelector(`[data-celula="${d}|${App.slug(h)}"]`));
+            },
           }));
         }))))));
   }

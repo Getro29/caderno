@@ -11,6 +11,7 @@ App.gamificacao = (() => {
   const ARQUIVO = 'Caderno/progresso.md';
   const eventos = [];
   let nivelVisto = null;
+  let xpMostrado = null; // para a barra andar do valor anterior até o novo
 
   // tipo: 'tarefa_concluida' | 'nota_criada' | 'habito_marcado' | 'captura' | ...
   function registrarEvento(tipo, id, dados = {}) {
@@ -58,11 +59,17 @@ App.gamificacao = (() => {
   function cartao({ compacto = false } = {}) {
     const p = progresso();
     nivelVisto ??= p.nivel;
+    const preenchimento = el('span', { style: `width:${p.pct}%` });
+    if (xpMostrado != null && xpMostrado !== p.xp && p.pct > 0) {
+      const antes = Math.floor(xpMostrado / XP_NIVEL) === p.nivel - 1 ? (xpMostrado % XP_NIVEL) / XP_NIVEL * 100 : 0;
+      App.animacao.encher(preenchimento, antes / p.pct);
+    }
+    xpMostrado = p.xp;
     return el('div', { class: 'nivel' + (compacto ? ' compacto' : '') },
       el('div', { class: 'nivel-emblema', 'aria-hidden': 'true' }, el('span', { text: p.nivel })),
       el('div', { class: 'nivel-texto' },
         el('div', { class: 'linha-stat' }, el('strong', { text: `Nível ${p.nivel}` }), el('span', { class: 'dica', text: `${p.noNivel} / ${p.xpNivel} XP` })),
-        el('div', { class: 'barra-progresso grande', role: 'img', 'aria-label': `${p.pct}% do nível ${p.nivel}; faltam ${p.faltam} XP` }, el('span', { style: `width:${p.pct}%` })),
+        el('div', { class: 'barra-progresso grande', role: 'img', 'aria-label': `${p.pct}% do nível ${p.nivel}; faltam ${p.faltam} XP` }, preenchimento),
         el('span', { class: 'dica', text: `Hoje: +${p.hoje} XP · cada hábito vale ${p.porHabito} XP · faltam ${p.faltam} XP${p.sequencia ? ` · ${p.sequencia} dia(s) seguidos` : ''}` })));
   }
 

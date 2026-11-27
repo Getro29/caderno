@@ -486,3 +486,8 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--primaria);
 .pref-secao + .pref-secao { border-top: 1px solid var(--borda); padding-top: 16px; }
 .pref-secao p { margin: 0; }
 @media (prefers-reduced-motion: reduce) { #nav a, button, input, select, textarea { transition: none; } }
+
+/* Animações (js/animacao.js). Faíscas da subida de nível: decorativas, fora do fluxo. */
+.faisca { position: fixed; z-index: 200; width: 7px; height: 7px; border-radius: 50%; background: var(--gradiente); pointer-events: none; box-shadow: 0 0 6px var(--primaria-2); }
+.cartao-painel, .caixa, .nivel { transition: box-shadow .2s, border-color .2s; }
+@media (prefers-reduced-motion: reduce) { .faisca { display: none; } .cartao-painel, .caixa, .nivel { transition: none; } }

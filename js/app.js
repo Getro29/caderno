@@ -151,6 +151,7 @@ window.App = (() => {
       }
       const t = App.el('div', { class: 'toast ' + tipo, role: tipo === 'erro' ? 'alert' : 'status', text: msg });
       area.append(t);
+      App.animacao?.aviso(t);
       setTimeout(() => t.remove(), tipo === 'erro' ? 7000 : 3500);
     },
 
@@ -165,6 +166,7 @@ window.App = (() => {
       dlg.addEventListener('close', () => { App.voz?.pararTudo(); dlg.remove(); });
       document.body.append(dlg);
       dlg.showModal();
+      App.animacao?.dialogo(dlg);
       return dlg;
     },
 

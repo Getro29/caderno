@@ -30,12 +30,15 @@
     }, App.icone(r.icone), el('span', { text: r.curto }))));
   }
 
+  let rotaDesenhada = null;
   function renderizar() {
     desenharNav();
     if (!App.store.conectado()) return;
-    const r = ROTAS[rotaAtual()];
+    const id = rotaAtual();
+    const r = ROTAS[id];
     document.title = `${r.titulo} · Bit-life`;
     r.modulo().render(principal);
+    if (id !== rotaDesenhada) { rotaDesenhada = id; App.animacao.entrada(principal); }
     App.notificacoes.desenhar();
     App.gamificacao.desenharSelo();
   }

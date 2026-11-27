@@ -74,6 +74,7 @@ index.html            # casca da página; carrega CSS e scripts em ordem
 css/estilo.css        # tokens de cor em :root; tema escuro automático ou forçado por data-theme
 js/
   app.js              # cria window.App, utilitários (datas, slug, eventos)
+  animacao.js         # App.animacao: entrada das páginas, barra de XP, nível, "pulo" do check (Web Animations API)
   yaml.js             # parse/serialize de frontmatter (subconjunto de YAML)
   markdown.js         # conversor Markdown mínimo e seguro + texto puro para leitura em voz
   store.js            # File System Access: pasta, ler/listar/gravar/alterar/mover .md, cache em memória
@@ -99,6 +100,7 @@ js/
   notificacoes.js     # sino do cabeçalho (tarefas/eventos/contas de hoje) e selo do temporizador
   main.js             # roteamento por hash (#/tarefas…), inicialização
 tests/e2e.js          # teste Playwright (usa OPFS no lugar da pasta real)
+.claude/skills/ui-ux-pro-max/  # skill de design (só para o Claude; o app não carrega nada dela)
 ```
 
 Cada módulo de tela expõe `render(container)` e só fala com os arquivos via `App.store`.
@@ -190,6 +192,17 @@ Definida pelo usuário: **XP vem dos hábitos do check-in diário.**
   marcar um hábito, `aposHabito()` avisa a subida de nível e regrava `Caderno/progresso.md`.
 - Outros eventos continuam passando por `registrarEvento(tipo, id)` mas ainda não dão XP.
   Missões e XP de outras áreas: decidir com o usuário antes de implementar.
+
+## Animação e design
+
+- Animações só com CSS e a Web Animations API, via `App.animacao` (sem Framer Motion, GSAP etc.).
+  Animar só `transform`/`opacity`, 150–450 ms, e nada quando `prefers-reduced-motion: reduce`.
+  A entrada da página roda só quando a rota muda (não a cada gravação).
+- Skill `ui-ux-pro-max` (MIT, de nextlevelbuilder) instalada em `.claude/skills/`. Pesquisa:
+  `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<busca>" --domain ux` (domínios: ux, style,
+  color, typography, gsap, chart…). As sugestões dela assumem React/Tailwind/GSAP/Google Fonts:
+  aproveitar só a ideia e escrever em JS/CSS puro. Ela desaconselha gradiente roxo, mas o visual
+  roxo do Bit-life é escolha do usuário — as regras deste arquivo sempre vencem.
 
 ## Estilo de código
 
@@ -284,6 +297,10 @@ programador: explicar em linguagem simples, sem jargão.
   agora explica isso.
 - Repositório público (exigência do GitHub Pages gratuito); dados nunca vão para o repo.
 - Domínio próprio: o usuário pretende comprar; configura em Settings → Pages → Custom domain.
+
+**Já feito (v2.1):** animações (entrada das páginas em sequência, barras enchendo, barra de XP
+andando, comemoração com faíscas ao subir de nível, "pulo" ao marcar caixas e células de hábito,
+avisos e diálogos deslizando) e skill de design `ui-ux-pro-max` instalada.
 
 **Pendente / próximos passos:**
 0. Confirmar no navegador do usuário que as buscas de jogos (ESPN/Jolpica) e de capas
