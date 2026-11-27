@@ -71,7 +71,7 @@ pelo usuário, compatível com um vault do Obsidian.
 
 ```
 index.html            # casca da página; carrega CSS e scripts em ordem
-css/estilo.css        # tokens de cor em :root, tema escuro via prefers-color-scheme
+css/estilo.css        # tokens de cor em :root; tema escuro automático ou forçado por data-theme
 js/
   app.js              # cria window.App, utilitários (datas, slug, eventos)
   yaml.js             # parse/serialize de frontmatter (subconjunto de YAML)
@@ -133,7 +133,7 @@ Convenções importantes de gravação:
   Financeiro/AAAA-MM.md       # lançamentos do mês (tabela no corpo)
   Entrada/<data-hora>.md      # capturas rápidas
   Caderno/habitos.md          # lista de hábitos do check-in
-  Caderno/progresso.md        # estado da gamificação (XP, nível, histórico)
+  Caderno/progresso.md        # retrato do nível/XP (recalculado a partir do Diario/)
   Caderno/missoes/AAAA-MM-DD.md
   .lixeira/
 ```
@@ -261,7 +261,7 @@ programador: explicar em linguagem simples, sem jargão.
   (prazos da semana, notas a revisar, contador da Entrada).
 - Ditado (ícone de microfone) em todos os campos de texto e leitura em voz alta de notas e resenhas (pt-BR).
 - Preservação de YAML desconhecido, `.lixeira/`, detecção de edição externa (Obsidian).
-- Teste e2e passando (`tests/e2e.js`). Visual atual é **provisório**.
+- Teste e2e passando (`tests/e2e.js`), incluindo Finanças, nível e Preferências.
 
 **Decisões tomadas:**
 - Voz do Cid Moreira: **não** clonar a voz de uma pessoa real a partir de vídeos (direitos de
@@ -280,7 +280,8 @@ programador: explicar em linguagem simples, sem jargão.
   na ESPN). As APIs da ESPN e da Jolpica não foram testadas de dentro do ambiente de nuvem
   (rede bloqueada): o e2e usa respostas simuladas. Se falharem, o caminho é importar .ics.
 - O usuário digita os dados no próprio app; a pasta escolhida serve para **salvar** (e reler
-  o que foi salvo). Sugestão dada: criar `Documentos/Caderno` e, depois, abrir no Obsidian.
+  o que foi salvo). Sugestão dada: criar `Documentos/Bit-life` e, depois, abrir no Obsidian. A tela de boas-vindas
+  agora explica isso.
 - Repositório público (exigência do GitHub Pages gratuito); dados nunca vão para o repo.
 - Domínio próprio: o usuário pretende comprar; configura em Settings → Pages → Custom domain.
 
