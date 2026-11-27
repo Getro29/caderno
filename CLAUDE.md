@@ -101,6 +101,7 @@ js/
   main.js             # roteamento por hash (#/tarefas…), inicialização
 tests/e2e.js          # teste Playwright (usa OPFS no lugar da pasta real)
 .claude/skills/ui-ux-pro-max/  # skill de design (só para o Claude; o app não carrega nada dela)
+.claude/skills/motion-design/   # skill de movimento (LottieFiles, MIT): tempos, curvas, coreografia
 ```
 
 Cada módulo de tela expõe `render(container)` e só fala com os arquivos via `App.store`.
@@ -198,6 +199,10 @@ Definida pelo usuário: **XP vem dos hábitos do check-in diário.**
 - Animações só com CSS e a Web Animations API, via `App.animacao` (sem Framer Motion, GSAP etc.).
   Animar só `transform`/`opacity`, 150–450 ms, e nada quando `prefers-reduced-motion: reduce`.
   A entrada da página roda só quando a rota muda (não a cada gravação).
+- Identidade de movimento (skill `motion-design`): base sóbria e toque brincalhão só nas conquistas.
+  Curvas em `animacao.js`: `ENTRA` (entrada), `SAI` (saída, mais curta), `MOLA` (conquista);
+  durações `RAPIDO` 160, `PADRAO` 280, `LENTO` 600 ms; cascata total < 500 ms; erro = sacudida sem mola.
+  Ignorar a sugestão dela de usar o serviço Creator MCP da LottieFiles (só exporta vídeo/GIF).
 - Skill `ui-ux-pro-max` (MIT, de nextlevelbuilder) instalada em `.claude/skills/`. Pesquisa:
   `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<busca>" --domain ux` (domínios: ux, style,
   color, typography, gsap, chart…). As sugestões dela assumem React/Tailwind/GSAP/Google Fonts:

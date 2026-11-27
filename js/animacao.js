@@ -4,14 +4,18 @@
 // animação quando o sistema pede "reduzir movimento". Animação nunca é necessária para entender
 // a tela: o estado final já está no HTML, a animação só mostra a mudança.
 App.animacao = (() => {
-  const SUAVE = 'cubic-bezier(.2, .8, .2, 1)';       // desacelera no fim (entrada)
-  const MOLA = 'cubic-bezier(.34, 1.56, .64, 1)';     // passa um pouco e volta (confirmação)
+  // Identidade de movimento: base "sóbria" (painel de produtividade) e um toque "brincalhão"
+  // só nas conquistas (marcar hábito, subir de nível). Uma curva principal e três durações.
+  const ENTRA = 'cubic-bezier(.05, .7, .1, 1)';      // entrada: começa rápido e pousa devagar
+  const SAI = 'cubic-bezier(.3, 0, 1, 1)';           // saída: começa devagar e acelera
+  const MOLA = 'cubic-bezier(.175, .885, .32, 1.275)'; // passa um pouco e assenta (conquista)
+  const RAPIDO = 160; const PADRAO = 280; const LENTO = 600;
   const pedeMenos = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const reduzido = () => !!pedeMenos?.matches || typeof Element.prototype.animate !== 'function';
 
   function animar(alvo, quadros, opcoes) {
     if (!alvo || reduzido()) return null;
-    return alvo.animate(quadros, { fill: 'backwards', easing: SUAVE, ...opcoes });
+    return alvo.animate(quadros, { fill: 'backwards', easing: ENTRA, ...opcoes });
   }
 
   // Cartões da página entram em sequência (de cima para baixo), uma vez por troca de página.
@@ -24,7 +28,7 @@ App.animacao = (() => {
       .slice(0, 14);
     itens.forEach((e, i) => animar(e,
       [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 320, delay: Math.min(i * 40, 360) }));
+      { duration: PADRAO, delay: Math.min(i * 40, 400) })); // cascata total abaixo de meio segundo
     raiz.querySelectorAll('.barra-progresso > span').forEach((s, i) => encher(s, 0, Math.min(150 + i * 30, 500)));
   }
 
@@ -32,13 +36,13 @@ App.animacao = (() => {
   function encher(span, deFracao = 0, delay = 0) {
     if (!span || !(deFracao < 1)) return;
     animar(span, [{ transformOrigin: 'left', transform: `scaleX(${Math.max(0, deFracao)})` }, { transformOrigin: 'left', transform: 'scaleX(1)' }],
-      { duration: 600, delay });
+      { duration: LENTO, delay });
   }
 
   // Pequeno "pulo" de confirmação (hábito marcado, caixa de seleção).
   function confirmar(alvo) {
-    animar(alvo, [{ transform: 'scale(1)' }, { transform: 'scale(1.28)', offset: .4 }, { transform: 'scale(1)' }],
-      { duration: 320, easing: MOLA, fill: 'none' });
+    animar(alvo, [{ transform: 'scale(.9)' }, { transform: 'scale(1.15)', offset: .45 }, { transform: 'scale(1)' }],
+      { duration: 220, easing: MOLA, fill: 'none' });
   }
 
   // Comemoração da subida de nível: o emblema e o selo pulam e soltam faíscas.
@@ -72,14 +76,25 @@ App.animacao = (() => {
     }
   }
 
-  // Avisos (toast) deslizam ao entrar.
+  // Avisos (toast) deslizam ao entrar; os de erro dão uma sacudida curta e firme (sem mola).
   function aviso(t) {
-    animar(t, [{ opacity: 0, transform: 'translateY(12px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 240 });
+    const a = animar(t, [{ opacity: 0, transform: 'translateY(12px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: PADRAO });
+    if (a && t.classList.contains('erro')) {
+      a.onfinish = () => animar(t, [0, -8, 8, -5, 5, 0].map(x => ({ transform: `translateX(${x}px)` })),
+        { duration: 320, easing: 'ease-in-out', fill: 'none' });
+    }
+  }
+
+  // Saída mais curta que a entrada, acelerando. Sem animação, remove na hora.
+  function sair(t) {
+    const a = animar(t, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(6px) scale(.98)' }],
+      { duration: RAPIDO + 20, easing: SAI, fill: 'forwards' });
+    if (a) a.onfinish = () => t.remove(); else t.remove();
   }
 
   // Diálogos crescem levemente ao abrir.
   function dialogo(d) {
-    animar(d, [{ opacity: 0, transform: 'translateY(8px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: 220 });
+    animar(d, [{ opacity: 0, transform: 'translateY(8px) scale(.97)' }, { opacity: 1, transform: 'none' }], { duration: PADRAO + 20 });
   }
 
   // Caixas de seleção dão um "pulo" quando a própria pessoa marca (não quando a tela é redesenhada).
@@ -90,5 +105,5 @@ App.animacao = (() => {
 
   App.on('nivel', () => setTimeout(comemorar, 80)); // espera a tela mostrar o nível novo
 
-  return { entrada, encher, confirmar, comemorar, aviso, dialogo, reduzido };
+  return { entrada, encher, confirmar, comemorar, aviso, sair, dialogo, reduzido };
 })();

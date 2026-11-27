@@ -152,7 +152,7 @@ window.App = (() => {
       const t = App.el('div', { class: 'toast ' + tipo, role: tipo === 'erro' ? 'alert' : 'status', text: msg });
       area.append(t);
       App.animacao?.aviso(t);
-      setTimeout(() => t.remove(), tipo === 'erro' ? 7000 : 3500);
+      setTimeout(() => (App.animacao ? App.animacao.sair(t) : t.remove()), tipo === 'erro' ? 7000 : 3500);
     },
 
     // Diálogo modal reutilizável. Retorna o <dialog>; corpo é um nó.
