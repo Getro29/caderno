@@ -15,25 +15,24 @@ App.habitos = (() => {
   // Check-in de um dia. Também é usado no Início. aoMudar: redesenhar estatísticas.
   function checkin(data = App.hoje(), aoMudar) {
     const m = App.diario.meta(data);
-    const habitos = App.diario.habitos();
-    const lista = el('ul', { class: 'checkin-habitos' }, habitos.map(h => {
+    const caixa = (h, classe) => {
       const id = `hab-${data}-${App.slug(h)}`;
-      return el('li', {},
+      return el('li', { class: classe },
         el('input', { type: 'checkbox', id, checked: App.diario.fez(data, h),
           onchange: async e => { await salvarErro(App.diario.alternar(data, h, e.target.checked)); aoMudar?.(); } }),
         el('label', { for: id, text: h }));
-    }));
+    };
+    const metricas = App.diario.metricas();
+    const lista = el('ul', { class: 'checkin-habitos' }, App.diario.habitos().map(h => caixa(h)));
+    const extras = metricas.length ? el('div', { class: 'checkin-metricas' },
+      el('p', { class: 'dica', text: 'Métricas (não contam XP)' }),
+      el('ul', { class: 'checkin-habitos' }, metricas.map(h => caixa(h, 'metrica')))) : null;
     const sono = el('input', { type: 'number', min: 0, max: 24, step: 0.5, value: m.sono_horas ?? '', inputmode: 'decimal',
       onchange: async e => { await salvarErro(App.diario.atualizar(data, { sono_horas: e.target.value === '' ? null : Number(e.target.value) })); aoMudar?.(); } });
     const humor = el('select', { onchange: async e => { await salvarErro(App.diario.atualizar(data, { humor: Number(e.target.value) || null })); aoMudar?.(); } },
       el('option', { value: '', text: '—' }), Object.entries(HUMOR).map(([v, r]) => el('option', { value: v, selected: Number(m.humor) === Number(v), text: `${v} · ${r}` })));
-    const idSocial = `social-${data}`;
-    const social = el('div', { class: 'checkin-social' },
-      el('input', { type: 'checkbox', id: idSocial, checked: App.diario.socializou(data),
-        onchange: async e => { await salvarErro(App.diario.marcarSocial(data, e.target.checked)); aoMudar?.(); } }),
-      el('label', { for: idSocial }, 'Socializei ', el('span', { class: 'dica', text: '(encontrei ou conversei com alguém de verdade; não conta XP)' })));
     return el('div', { class: 'checkin' },
-      lista, social,
+      lista, extras,
       el('div', { class: 'checkin-numeros' },
         App.campo('Horas de sono (noite anterior)', sono, { voz: false }),
         App.campo('Como foi o dia', humor, { voz: false })));
@@ -43,42 +42,27 @@ App.habitos = (() => {
     const { ano, mes } = estado;
     const dias = App.diario.diasDoMes(ano, mes);
     const hoje = App.hoje();
-    const habitos = App.diario.habitos();
-    return el('div', { class: 'rolagem-mes' }, el('table', { class: 'grade-habitos' },
-      el('caption', { class: 'sr', text: `Hábitos de ${nomeMes(ano, mes)}` }),
-      el('thead', {}, el('tr', {}, el('th', { scope: 'col', text: 'Hábito' }), dias.map(d => el('th', { scope: 'col', class: d === hoje ? 'hoje' : null, text: Number(d.slice(8)) })))),
-      el('tbody', {}, habitos.map(h => el('tr', {},
-        el('th', { scope: 'row', text: h }),
-        dias.map(d => {
-          const feito = App.diario.fez(d, h);
-          return el('td', {}, el('button', {
-            type: 'button', class: 'celula-habito' + (feito ? ' feito' : ''), 'aria-pressed': String(feito), disabled: d > hoje,
-            'aria-label': `${h}, dia ${Number(d.slice(8))}`,
-            'data-celula': `${d}|${App.slug(h)}`,
-            onclick: async () => {
-              await salvarErro(App.diario.alternar(d, h, !feito)); render(container);
-              if (!feito) App.animacao.confirmar(container.querySelector(`[data-celula="${d}|${App.slug(h)}"]`));
-            },
-          }));
-        }))),
-        linhaSocial(dias, hoje, container))));
-  }
-
-  // Linha separada na grade: "Socializar" não é hábito (não dá XP), por isso tem outra cor.
-  function linhaSocial(dias, hoje, container) {
-    return el('tr', { class: 'linha-social' },
-      el('th', { scope: 'row', text: 'Socializar' }),
+    // Hábitos (vermelho, dão XP) e métricas (branco, sem XP) numa grade só.
+    const linha = (h, metrica) => el('tr', { class: metrica ? 'linha-metrica' : null },
+      el('th', { scope: 'row' }, h, metrica ? el('span', { class: 'sr', text: ' (métrica, sem XP)' }) : null),
       dias.map(d => {
-        const feito = App.diario.socializou(d);
+        const feito = App.diario.fez(d, h);
+        const chave = `${d}|${App.slug(h)}`;
         return el('td', {}, el('button', {
-          type: 'button', class: 'celula-habito social' + (feito ? ' feito' : ''), 'aria-pressed': String(feito), disabled: d > hoje,
-          'aria-label': `Socializar, dia ${Number(d.slice(8))}`, 'data-celula': `${d}|socializar`,
+          type: 'button', class: 'celula-habito' + (metrica ? ' metrica' : '') + (feito ? ' feito' : ''), 'aria-pressed': String(feito), disabled: d > hoje,
+          'aria-label': `${h}, dia ${Number(d.slice(8))}`, 'data-celula': chave,
           onclick: async () => {
-            await salvarErro(App.diario.marcarSocial(d, !feito)); render(container);
-            if (!feito) App.animacao.confirmar(container.querySelector(`[data-celula="${d}|socializar"]`));
+            await salvarErro(App.diario.alternar(d, h, !feito)); render(container);
+            if (!feito) App.animacao.confirmar(container.querySelector(`[data-celula="${chave}"]`));
           },
         }));
       }));
+    const metricas = App.diario.metricas();
+    return el('div', { class: 'rolagem-mes' }, el('table', { class: 'grade-habitos' },
+      el('caption', { class: 'sr', text: `Hábitos e métricas de ${nomeMes(ano, mes)}` }),
+      el('thead', {}, el('tr', {}, el('th', { scope: 'col', text: 'Hábito' }), dias.map(d => el('th', { scope: 'col', class: d === hoje ? 'hoje' : null, text: Number(d.slice(8)) })))),
+      el('tbody', {}, App.diario.habitos().map(h => linha(h, false))),
+      metricas.length ? el('tbody', { class: 'grupo-metricas' }, metricas.map(h => linha(h, true))) : null));
   }
 
   function barra(pct, rotulo) {
@@ -92,36 +76,53 @@ App.habitos = (() => {
         numero(`${r.geralPct}%`, 'dos hábitos cumpridos'),
         numero(r.sonoMedio ? `${r.sonoMedio.toFixed(1)} h` : '—', 'de sono em média'),
         numero(r.humorMedio ? r.humorMedio.toFixed(1) : '—', 'humor médio (1 a 5)'),
-        numero(r.estudoMinutos ? `${Math.floor(r.estudoMinutos / 60)}h${String(r.estudoMinutos % 60).padStart(2, '0')}` : '—', 'de estudo cronometrado'),
-        numero(String(r.socialDias), r.socialDias === 1 ? 'dia socializando' : 'dias socializando')),
+        numero(r.estudoMinutos ? `${Math.floor(r.estudoMinutos / 60)}h${String(r.estudoMinutos % 60).padStart(2, '0')}` : '—', 'de estudo cronometrado')),
       el('ul', { class: 'lista-habitos-stats' }, r.porHabito.map(h => el('li', {},
         el('div', { class: 'linha-stat' }, el('strong', { text: h.nome }),
           el('span', { class: 'dica', text: `${h.feitos}/${h.dias} dias · ${h.pct}%${h.sequencia ? ` · sequência de ${h.sequencia} dia(s)` : ''}` })),
-        barra(h.pct, h.nome)))));
+        barra(h.pct, h.nome)))),
+      r.porMetrica.length ? el('ul', { class: 'lista-habitos-stats metricas', 'aria-label': 'Métricas (sem XP)' }, r.porMetrica.map(h => el('li', {},
+        el('div', { class: 'linha-stat' }, el('strong', { text: h.nome }),
+          el('span', { class: 'dica', text: `${h.feitos}/${h.dias} dias · ${h.pct}% · sem XP` })),
+        barra(h.pct, h.nome)))) : null);
   }
   const numero = (valor, rotulo) => el('p', { class: 'numero-grande' }, el('strong', { text: valor }), ' ', rotulo);
 
-  function gerenciar(container) {
-    const novo = el('input', { type: 'text', placeholder: 'ex.: Meditação, Beber 2L de água' });
-    const habitos = App.diario.habitos();
-    const adicionar = async () => {
-      const n = novo.value.trim();
-      if (!n) { novo.focus(); return; }
-      if (habitos.some(h => App.slug(h) === App.slug(n))) { App.toast('Esse hábito já existe.', 'erro'); return; }
-      await salvarErro(App.diario.salvarHabitos([...habitos, n]));
+  // Edição das listas: hábitos (dão XP) e métricas (só acompanhamento). Dá para mover entre elas.
+  function gerenciar() {
+    const { habitos, metricas } = { habitos: App.diario.habitos(), metricas: App.diario.metricas() };
+    const existe = n => [...habitos, ...metricas].some(h => App.slug(h) === App.slug(n));
+    const salvarAmbas = (hab, met) => salvarErro(App.diario.salvarHabitos(hab).then(() => App.diario.salvarMetricas(met)));
+    const bloco = (titulo, itens, ehHabito) => {
+      const novo = el('input', { type: 'text', placeholder: ehHabito ? 'ex.: Meditação, Beber 2L de água' : 'ex.: Oração, Sem açúcar, Videogame' });
+      const salvar = lista => salvarErro(ehHabito ? App.diario.salvarHabitos(lista) : App.diario.salvarMetricas(lista));
+      const adicionar = () => {
+        const n = novo.value.trim();
+        if (!n) { novo.focus(); return; }
+        if (existe(n)) { App.toast('Já existe um hábito ou métrica com esse nome.', 'erro'); return; }
+        salvar([...itens, n]);
+      };
+      novo.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionar(); } });
+      return el('div', { class: 'lista-editavel' },
+        el('h3', { text: titulo }),
+        itens.length ? el('ul', { class: 'lista-simples' }, itens.map((h, i) => el('li', {},
+          el('span', { text: h }),
+          el('span', { class: 'acoes' },
+            i > 0 ? el('button', { type: 'button', class: 'icone', 'aria-label': `Subir ${h}`, onclick: () => { const l = itens.slice(); [l[i - 1], l[i]] = [l[i], l[i - 1]]; salvar(l); } }, App.icone('cima')) : null,
+            el('button', { type: 'button', class: 'secundario pequeno', text: ehHabito ? 'Virar métrica' : 'Dar XP',
+              onclick: () => (ehHabito ? salvarAmbas(habitos.filter(x => x !== h), [...metricas, h]) : salvarAmbas([...habitos, h], metricas.filter(x => x !== h))) }),
+            el('button', { type: 'button', class: 'icone', 'aria-label': `Remover ${h}`, onclick: () => {
+              if (App.confirmar(`Tirar "${h}" da lista? O histórico dos dias passados continua salvo.`)) salvar(itens.filter(x => x !== h));
+            } }, App.icone('lixeira')))))) : el('p', { class: 'vazio', text: 'Nenhuma.' }),
+        el('div', { class: 'campo-linha' }, el('div', { class: 'espaco' }, App.campo(ehHabito ? 'Novo hábito' : 'Nova métrica', novo, { voz: false })),
+          el('button', { type: 'button', class: 'alinhar-base', text: 'Adicionar', onclick: adicionar })));
     };
-    novo.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionar(); } });
     return el('details', { class: 'caixa' },
-      el('summary', { text: 'Editar lista de hábitos' }),
-      el('ul', { class: 'lista-simples' }, habitos.map((h, i) => el('li', {},
-        el('span', { text: h }),
-        el('span', { class: 'acoes' },
-          i > 0 ? el('button', { type: 'button', class: 'icone', 'aria-label': `Subir ${h}`, onclick: () => { const l = habitos.slice(); [l[i - 1], l[i]] = [l[i], l[i - 1]]; salvarErro(App.diario.salvarHabitos(l)); } }, App.icone('cima')) : null,
-          el('button', { type: 'button', class: 'icone', 'aria-label': `Remover ${h}`, onclick: () => {
-            if (App.confirmar(`Tirar "${h}" da lista? O histórico dos dias passados continua salvo.`)) salvarErro(App.diario.salvarHabitos(habitos.filter(x => x !== h)));
-          } }, App.icone('lixeira')))))),
-      el('div', { class: 'campo-linha' }, el('div', { class: 'espaco' }, App.campo('Novo hábito', novo, { voz: false })),
-        el('button', { type: 'button', class: 'alinhar-base', text: 'Adicionar', onclick: adicionar })));
+      el('summary', { text: 'Editar hábitos e métricas' }),
+      el('p', { class: 'dica', text: 'Hábitos dão XP (um dia com todos feitos = 100 XP). Métricas aparecem no check-in e nos quadradinhos, mas não mexem no nível.' }),
+      el('div', { class: 'duas-colunas-largas' },
+        bloco('Hábitos (dão XP)', habitos, true),
+        bloco('Métricas (sem XP)', metricas, false)));
   }
 
   function render(container) {
@@ -163,9 +164,9 @@ App.habitos = (() => {
           el('p', { class: 'dica', text: `Mês anterior (${nomeMes(anterior.getFullYear(), anterior.getMonth())}): ${App.diario.resumoMes(anterior.getFullYear(), anterior.getMonth()).geralPct}% dos hábitos cumpridos.` }))),
       el('section', { class: 'caixa', 'aria-labelledby': 'titulo-grade' },
         el('h2', { id: 'titulo-grade', text: 'Mês em quadradinhos' }),
-        el('p', { class: 'dica', text: 'Clique num quadrado para marcar ou desmarcar um dia que passou.' }),
+        el('p', { class: 'dica', text: 'Clique num quadrado para marcar ou desmarcar um dia que passou. Linhas vermelhas são hábitos (dão XP); brancas são métricas (sem XP).' }),
         areaGrade),
-      gerenciar(container));
+      gerenciar());
   }
 
   return { render, checkin, HUMOR };

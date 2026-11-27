@@ -65,7 +65,7 @@ App.perfil = (() => {
   function equilibrio() {
     const dias = diasDaJanela();
     if (!dias.length) return null;
-    const habitos = App.diario.habitos();
+    const habitos = [...App.diario.habitos(), ...App.diario.metricas()];
     const exerc = habitos.filter(h => EXERCICIO.test(App.slug(h)));
     const dieta = habitos.filter(h => DIETA.test(App.slug(h)));
     const media = l => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : 0);
@@ -98,7 +98,7 @@ App.perfil = (() => {
         { nome: 'Saúde', valor: pct(saude), como: 'sono de 7 h ou mais, exercício e alimentação em dia' },
         { nome: 'Estudo', valor: pct(estudo), como: 'minutos de estudo cronometrados (meta de 1 h por dia)' },
         { nome: 'Diversão', valor: pct(diversao), como: 'livros e filmes/séries terminados (meta de 1 por semana) e em andamento' },
-        { nome: 'Socialização', valor: pct(social), como: 'dias marcados como "Socializei" (meta de 3 por semana)' },
+        { nome: 'Socialização', valor: pct(social), como: 'dias com o hábito Socializar marcado (meta de 3 por semana)' },
       ],
     };
   }
@@ -171,7 +171,7 @@ App.perfil = (() => {
   }
 
   function favoritos() {
-    const melhores = l => l.filter(d => Number(d.meta.nota) >= 4.5).sort((a, b) => Number(b.meta.nota) - Number(a.meta.nota) || String(b.meta.fim || '').localeCompare(String(a.meta.fim || '')));
+    const melhores = l => l.filter(d => Number(d.meta.nota) >= 5).sort((a, b) => Number(b.meta.nota) - Number(a.meta.nota) || String(b.meta.fim || '').localeCompare(String(a.meta.fim || '')));
     return [...melhores(App.livros.todos()), ...melhores(App.entretenimento.todos())].slice(0, 6);
   }
 
@@ -245,7 +245,7 @@ App.perfil = (() => {
           el('section', { class: 'caixa', 'aria-labelledby': 'perfil-sobre' }, el('h2', { id: 'perfil-sobre', text: 'Sobre mim' }),
             sobre ? App.markdown.render(el('div', { class: 'markdown' }), sobre) : el('p', { class: 'vazio', text: 'Ainda vazio.' })),
           el('section', { class: 'caixa', 'aria-labelledby': 'perfil-favoritos' }, el('h2', { id: 'perfil-favoritos', text: 'Favoritos' }),
-            favoritos().length ? el('ul', { class: 'vitrine' }, favoritos().map(capinha)) : el('p', { class: 'vazio', text: 'Livros, filmes e séries com nota 4,5 ou 5 aparecem aqui.' })),
+            favoritos().length ? el('ul', { class: 'vitrine' }, favoritos().map(capinha)) : el('p', { class: 'vazio', text: 'Livros, filmes e séries com nota 5 aparecem aqui.' })),
           andamento.length ? el('section', { class: 'caixa', 'aria-labelledby': 'perfil-agora' }, el('h2', { id: 'perfil-agora', text: 'Agora' }),
             el('ul', { class: 'vitrine' }, andamento.slice(0, 6).map(capinha))) : null),
         el('aside', { class: 'perfil-lateral' },

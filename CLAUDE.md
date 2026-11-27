@@ -62,6 +62,9 @@ pelo usuário, compatível com um vault do Obsidian.
     TVmaze, AniList, Jikan) em "Buscar capa" / "Completar capas", enviando apenas o título.
   - `js/agenda.js` baixa calendários esportivos em "Buscar/Atualizar" (Jolpica F1 em
     api.jolpi.ca; ESPN em site.api.espn.com para NFL e futebol). Nada do usuário é enviado. Capas são guardadas como URL no campo `capa`.
+  - `js/cadernos.js`: vídeo do YouTube (youtube-nocookie.com) ou Vimeo só é embutido quando a
+    pessoa clica em "Carregar vídeo aqui"; antes disso é só um cartão com link.
+  - Link compartilhado (`#/ver?d=...`): quem o abre carrega a capa (URL pública) que veio no link.
   Goodreads e Letterboxd não têm API aberta: a sincronização é por **importação do CSV**
   que esses sites exportam (Goodreads → Export Library; Letterboxd → Settings → Data).
 - Usar só caminhos relativos (`./css/...`) para funcionar tanto em `usuario.github.io/caderno`
@@ -85,7 +88,9 @@ js/
   timebox.js          # componente de timeboxing (blocos de 30 min), usado em Tarefas e Estudo
   entrada.js          # captura rápida (Entrada/) — exibida dentro da página Tarefas
   tarefas.js          # página Tarefas: Entrada + tarefas + timeboxing do dia
-  notas.js            # módulo Notas de Estudo
+  notas.js            # Notas de estudo (aba #/estudo/notas; #/notas redireciona)
+  cadernos.js         # Cadernos de estudo (aba #/estudo/cadernos): temas, texto, vídeos, imagens
+  compartilhar.js     # link de compartilhar (#/ver?d=…): livro lendo/lido, filme/série visto, nível ≥ 2
   catalogo.js         # busca de capas/dados em catálogos públicos + importação CSV Goodreads/Letterboxd
   livros.js           # página "Leitura" (App.livros; arquivos em Livros/, rota #/leitura)
   entretenimento.js   # filmes, séries e animes
@@ -95,7 +100,7 @@ js/
   habitos.js          # página Hábitos: check-in, grade do mês, estatísticas
   dieta.js            # página Dieta: refeições/macros, água, peso, metas, progresso, receitas
   financeiro.js       # página Finanças (rota #/financas): entradas, saídas, planejados por data
-  estudo.js           # página Estudo: temporizador, checklist, timeboxing, simulados
+  estudo.js           # página Estudo com abas (#/estudo/hoje|notas|cadernos|simulados)
   perfil.js           # página Perfil (#/perfil, botão com a foto no canto): capa, selos, números, radar de equilíbrio
   painel.js           # Início: retrato + radar de equilíbrio, nível, briefing do dia, check-in, próximos dias, em andamento, finanças
   notificacoes.js     # sino do cabeçalho (tarefas/eventos/contas de hoje) e selo do temporizador
@@ -134,6 +139,7 @@ Convenções importantes de gravação:
   Timebox/AAAA-MM-DD-dia.md   # e -estudo.md
   Dieta/metas.md, Dieta/Registros/AAAA-MM-DD.md, Dieta/Receitas/<slug>.md
   Estudo/Dias/AAAA-MM-DD.md, Estudo/Simulados/<slug>.md
+  Estudo/Cadernos/<slug>.md + Estudo/Cadernos/imagens/<arquivo>
   Financeiro/AAAA-MM.md       # lançamentos do mês (tabela no corpo)
   Entrada/<data-hora>.md      # capturas rápidas
   Caderno/habitos.md          # lista de hábitos do check-in
@@ -163,12 +169,17 @@ Campos obrigatórios por tipo (`tipo` sempre presente para identificar o arquivo
   Excluir move o `.md` **e** a imagem para `.lixeira/`.
 - **agenda:** `tipo, nome, categoria (esporte|vestibular|importado), fonte, atualizado, mostrar`
   — corpo: uma linha por compromisso `- AAAA-MM-DD HH:MM | título` (hora opcional), hora local.
-- **diario:** `tipo, data, habitos (lista de slugs feitos), sono_horas, humor (1–5), estudo_minutos, socializou (true|false)`.
-  `socializou` é métrica à parte: não é hábito e **não dá XP**.
+- **diario:** `tipo, data, habitos (lista de slugs marcados: hábitos E métricas), sono_horas, humor (1–5), estudo_minutos`.
+  Formato antigo: `socializou: true` conta como `socializar` marcado (mantido coerente ao alternar).
 - **perfil** (`Caderno/perfil.md`): `tipo, nome, frase, foto, capa (caminhos em Caderno/imagens/ ou null), atualizado`
   — corpo = "Sobre mim". Trocar/tirar imagem move a antiga para `.lixeira/`.
-- **config_habitos** (`Caderno/habitos.md`): `tipo, habitos` (lista de nomes; padrão Leitura,
-  Dieta do dia, Exercício, Bíblia). Slug do nome é a chave usada no diário.
+- **config_habitos** (`Caderno/habitos.md`): `tipo, habitos, metricas`. `habitos` dão XP (padrão Leitura,
+  Dieta do dia, Exercício, Socializar); `metricas` só acompanham, sem XP (padrão Bíblia). Slug do nome é a
+  chave no diário, então mover entre as listas não perde histórico. Arquivo antigo sem `metricas` é
+  convertido na leitura (Bíblia → métrica, Socializar entra nos hábitos) e gravado no próximo salvamento.
+- **caderno** (`Estudo/Cadernos/<slug>.md`): `tipo, titulo, tema, criado, atualizado, tags` — corpo em
+  Markdown; imagem = linha `![[arquivo]]` (arquivo em `Estudo/Cadernos/imagens/`); vídeo = linha
+  `- [Título](https://youtube…|vimeo…)`. Excluir move o `.md` e as imagens para `.lixeira/`.
 - **timebox:** `tipo, data, contexto (dia|estudo)` — corpo `- [ ] HH:MM o que fazer` ([x] = feito).
 - **metas_dieta:** `tipo, calorias, proteina_g, carboidrato_g, gordura_g, agua_ml, peso_meta_kg`.
 - **dieta_dia:** `tipo, data, peso_kg, agua_ml, calorias, proteina_g, carboidrato_g, gordura_g`
@@ -192,7 +203,8 @@ em colisão, sufixo `-2`, `-3`.
 
 Definida pelo usuário: **XP vem dos hábitos do check-in diário.**
 - Um dia com todos os hábitos feitos vale **100 XP**; cada hábito vale a sua fração
-  (4 hábitos → 25 XP cada). Máximo de 100 XP por dia.
+  (4 hábitos → 25 XP cada). Máximo de 100 XP por dia. **Métricas não contam** (`feitosXP`).
+- Decisão do usuário: Bíblia saiu do XP (virou métrica, branca na grade) e Socializar entrou no lugar.
 - **A cada 5 dias completos (500 XP) sobe um nível.** Começa no nível 1.
 - Tudo é calculado a partir dos arquivos `Diario/` (`App.gamificacao.progresso()`); depois de
   marcar um hábito, `aposHabito()` avisa a subida de nível e regrava `Caderno/progresso.md`.
@@ -217,7 +229,7 @@ Definida pelo usuário: **XP vem dos hábitos do check-in diário.**
   academia/corrida…) e alimentação (hábito com "dieta" ou registro em `Dieta/Registros/`).
 - **Estudo:** `estudo_minutos` por dia, meta 60 min.
 - **Diversão:** livros/filmes/séries terminados na janela (+0,5 por item em andamento), meta 1 por semana.
-- **Socialização:** dias com `socializou: true`, meta 3 por semana.
+- **Socialização:** dias com o hábito Socializar marcado, meta 3 por semana.
 Não mexe no XP. Selos do perfil também são calculados na hora (nada gravado).
 
 ## Animação e design
@@ -276,7 +288,7 @@ programador: explicar em linguagem simples, sem jargão.
   velocidade 0,9 e tom 0,8 ("narrador"); ajustável em Preferências.
 
 **Já feito (v1):**
-- Navegação: Início, Tarefas, Calendário, Estudo, Notas, Hábitos, Dieta, Leitura,
+- Navegação (v1; Notas hoje é aba de Estudo): Início, Tarefas, Calendário, Estudo, Notas, Hábitos, Dieta, Leitura,
   Entretenimento, Arte. Endereços antigos `#/entrada` e `#/livros` redirecionam.
 - Tarefas = Entrada (captura) + lista/quadro de tarefas + timeboxing do dia (30 em 30 min).
 - Estudo: temporizador por duração ou "até HH:MM", com pausa/continuar, aviso sonoro, selo no
@@ -337,9 +349,19 @@ avisos e diálogos deslizando) e skill de design `ui-ux-pro-max` instalada.
 "Socializar" (check-in, grade do mês, estatísticas), radar de equilíbrio no Início e no Perfil,
 retrato com foto no Início, página Perfil com capa, foto, frase, sobre mim, números, selos e favoritos.
 
-**Ideia conversada (não implementada):** botão "compartilhar" (ex.: livro que estou lendo) gerando
-um link para o site com os dados no próprio endereço (`#/ver?d=...`), sem servidor; quem abre vê o
-cartão e um convite para usar o Bit-life com a própria pasta. Não precisa de repositório próprio.
+**Já feito (v4):**
+- Hábitos × métricas: lista editável de métricas sem XP (brancas na grade); Bíblia virou métrica;
+  Socializar virou hábito (vermelho, dá XP).
+- Compartilhar (`App.compartilhar`): link `#/ver?d=<JSON em base64url>` sem servidor. Regra do usuário:
+  **só** livro lendo/lido, filme/série/anime visto e nível alcançado (≥ 2). Vai só título, autor/criador,
+  ano, nota, capa (URL) e nome do perfil — nunca resenha, tags ou outro dado. A página `ver` abre sem
+  pasta, valida e limpa tudo de novo, e convida a pessoa a começar o próprio Bit-life (não precisa de
+  repositório). Botões: diálogo do livro/filme e ícone no cartão de nível.
+- Perfil: Favoritos só com nota 5.
+- Notas viraram aba de Estudo; nova aba Cadernos (temas, texto Markdown, vídeos com carregar-ao-clicar,
+  imagens por botão, colar ou arrastar).
+- Timeboxing largo: períodos Manhã/Tarde/Noite (e Madrugada opcional) lado a lado, sem rolagem interna,
+  abaixo do conteúdo em Tarefas e em Estudo → Hoje.
 
 **Pendente / próximos passos:**
 0. Confirmar no navegador do usuário que as buscas de jogos (ESPN/Jolpica) e de capas

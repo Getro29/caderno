@@ -1,11 +1,14 @@
 'use strict';
 // Diário: um arquivo por dia (Diario/AAAA-MM-DD.md) com o check-in diário — hábitos marcados,
-// horas de sono, humor, minutos de estudo e se socializou (fora do XP). É a base das estatísticas e do briefing do Início.
-// A lista de hábitos fica em Caderno/habitos.md.
+// horas de sono, humor e minutos de estudo. É a base das estatísticas e do briefing do Início.
+// A lista de hábitos (dão XP) e de métricas (só acompanhamento, sem XP) fica em Caderno/habitos.md.
+// Hábitos e métricas marcados no dia ficam juntos no campo `habitos` (lista de slugs) do diário,
+// então mudar algo de hábito para métrica (ou o contrário) não perde o histórico.
 App.diario = (() => {
   const PASTA = 'Diario';
   const CONFIG = 'Caderno/habitos.md';
-  const PADRAO = ['Leitura', 'Dieta do dia', 'Exercício', 'Bíblia'];
+  const PADRAO = ['Leitura', 'Dieta do dia', 'Exercício', 'Socializar'];
+  const PADRAO_METRICAS = ['Bíblia'];
 
   const caminho = data => `${PASTA}/${data}.md`;
   const obter = data => App.store.obter(caminho(data)) || null;
@@ -15,32 +18,58 @@ App.diario = (() => {
   // patch pode ser um objeto ou uma função (metaAtual) => objeto, aplicada na versão mais recente.
   function atualizar(data, patch, opcoes = { inline: true }) {
     return App.store.alterar(caminho(data), doc => {
-      const atual = { tipo: 'diario', data, habitos: [], sono_horas: null, humor: null, estudo_minutos: null, socializou: false, ...(doc?.meta || {}) };
+      const atual = { tipo: 'diario', data, habitos: [], sono_horas: null, humor: null, estudo_minutos: null, ...(doc?.meta || {}) };
       return { meta: { ...atual, ...(typeof patch === 'function' ? patch(atual) : patch) }, corpo: doc?.corpo || '' };
     }, opcoes);
   }
 
   // ---- hábitos ----
-  function habitos() {
-    const c = App.store.obter(CONFIG);
-    const lista = App.lista(c?.meta.habitos).map(String).filter(Boolean);
-    return lista.length ? lista : PADRAO.slice();
-  }
-  async function salvarHabitos(lista) {
-    const doc = App.store.obter(CONFIG);
-    const corpo = doc?.corpo || 'Lista de hábitos marcados no check-in diário do Bit-life. Cada dia fica em Diario/AAAA-MM-DD.md.\n';
-    return App.store.gravar(CONFIG, { tipo: 'config_habitos', ...(doc?.meta || {}), habitos: lista }, corpo);
-  }
   const chave = nome => App.slug(nome);
-  const feitos = data => App.lista(meta(data).habitos).map(String);
+  // Arquivo sem `metricas` é da versão anterior: lá Bíblia dava XP. Agora Bíblia vira métrica
+  // e Socializar entra no lugar dela entre os hábitos. A conversão só é gravada no próximo salvamento.
+  function config() {
+    const m = App.store.obter(CONFIG)?.meta || {};
+    let hab = App.lista(m.habitos).map(String).filter(Boolean);
+    let met = App.lista(m.metricas).map(String).filter(Boolean);
+    if (!Object.prototype.hasOwnProperty.call(m, 'metricas')) {
+      if (!hab.length) { hab = PADRAO.slice(); met = PADRAO_METRICAS.slice(); }
+      else {
+        const biblia = hab.filter(h => chave(h) === 'biblia');
+        hab = hab.filter(h => chave(h) !== 'biblia');
+        if (!hab.some(h => chave(h) === 'socializar')) hab.push('Socializar');
+        met = biblia.length ? biblia : PADRAO_METRICAS.slice();
+      }
+    }
+    return { habitos: hab.length ? hab : PADRAO.slice(), metricas: met };
+  }
+  const habitos = () => config().habitos;
+  const metricas = () => config().metricas;
+  async function salvarConfig({ habitos: hab = habitos(), metricas: met = metricas() }) {
+    const doc = App.store.obter(CONFIG);
+    const corpo = doc?.corpo || 'Lista do check-in diário do Bit-life. "habitos" dão XP; "metricas" são só acompanhamento (sem XP). Cada dia fica em Diario/AAAA-MM-DD.md.\n';
+    return App.store.gravar(CONFIG, { tipo: 'config_habitos', ...(doc?.meta || {}), habitos: hab, metricas: met }, corpo);
+  }
+  const salvarHabitos = lista => salvarConfig({ habitos: lista });
+  const salvarMetricas = lista => salvarConfig({ metricas: lista });
+
+  // Slugs marcados no dia. `socializou: true` é o formato antigo de "Socializar".
+  const feitos = data => {
+    const m = meta(data);
+    const l = App.lista(m.habitos).map(String);
+    return m.socializou === true && !l.includes('socializar') ? [...l, 'socializar'] : l;
+  };
   const fez = (data, nome) => feitos(data).includes(chave(nome));
+  const feitosXP = data => habitos().filter(h => fez(data, h)).length;
 
   function alternar(data, nome, marcado) {
     if (marcado) App.gamificacao.registrarEvento('habito_marcado', caminho(data), { habito: chave(nome) });
     return atualizar(data, m => {
       const atual = new Set(App.lista(m.habitos).map(String));
+      if (m.socializou === true) atual.add('socializar');
       if (marcado) atual.add(chave(nome)); else atual.delete(chave(nome));
-      return { habitos: [...atual] };
+      const patch = { habitos: [...atual] };
+      if ('socializou' in m) patch.socializou = atual.has('socializar'); // mantém o campo antigo coerente
+      return patch;
     }).then(r => { App.gamificacao.aposHabito(); return r; });
   }
 
@@ -63,33 +92,34 @@ App.diario = (() => {
 
   function resumoMes(ano, mes) {
     const dias = diasContados(ano, mes);
-    const porHabito = habitos().map(h => {
+    const contar = h => {
       const qtd = dias.filter(d => fez(d, h)).length;
       return { nome: h, feitos: qtd, dias: dias.length, pct: dias.length ? Math.round((qtd / dias.length) * 100) : 0, sequencia: sequencia(h) };
-    });
+    };
+    const porHabito = habitos().map(contar);
+    const porMetrica = metricas().map(contar);
     const registros = dias.map(meta);
     const media = campo => {
       const v = registros.map(m => Number(m[campo])).filter(x => x > 0);
       return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
     };
     const estudo = registros.reduce((a, m) => a + (Number(m.estudo_minutos) || 0), 0);
-    const social = registros.filter(m => m.socializou === true).length;
+    const social = dias.filter(d => fez(d, 'Socializar')).length;
     const total = porHabito.reduce((a, h) => a + h.feitos, 0);
     const possivel = porHabito.reduce((a, h) => a + h.dias, 0);
     return {
-      ano, mes, dias: dias.length, porHabito, geralPct: possivel ? Math.round((total / possivel) * 100) : 0,
+      ano, mes, dias: dias.length, porHabito, porMetrica, geralPct: possivel ? Math.round((total / possivel) * 100) : 0,
       sonoMedio: media('sono_horas'), humorMedio: media('humor'), estudoMinutos: estudo,
       socialDias: social, socialPct: dias.length ? Math.round((social / dias.length) * 100) : 0,
     };
   }
 
   // Socializar: métrica à parte dos hábitos (não muda o XP, que vem só dos hábitos).
-  const socializou = data => meta(data).socializou === true;
-  const marcarSocial = (data, sim) => atualizar(data, { socializou: !!sim });
+  const socializou = data => fez(data, 'Socializar');
 
   function somarEstudo(data, minutos) {
     return atualizar(data, m => ({ estudo_minutos: (Number(m.estudo_minutos) || 0) + Math.round(minutos) }), {});
   }
 
-  return { caminho, obter, meta, atualizar, habitos, salvarHabitos, chave, feitos, fez, alternar, sequencia, resumoMes, diasDoMes, somarEstudo, socializou, marcarSocial };
+  return { caminho, obter, meta, atualizar, habitos, salvarHabitos, chave, feitos, fez, alternar, sequencia, resumoMes, diasDoMes, somarEstudo, socializou, metricas, salvarMetricas, feitosXP };
 })();

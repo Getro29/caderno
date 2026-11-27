@@ -62,7 +62,9 @@ App.timebox = (() => {
       const agora = new Date();
       const atual = est.data === App.hoje() ? `${z(agora.getHours())}:${agora.getMinutes() >= 30 ? '30' : '00'}` : null;
       const salvar = () => App.tentar(() => gravar(est.data, contexto, blocos, outras, doc), 'Não foi possível salvar o horário');
-      const lista = el('ol', { class: 'timebox-lista' }, horarios(est.madrugada ? 0 : 5, 24).map(h => {
+      // Períodos lado a lado (largo): cada um é uma coluna com os blocos de 30 min.
+      const PERIODOS = [['Madrugada', 0, 5], ['Manhã', 5, 12], ['Tarde', 12, 18], ['Noite', 18, 24]].filter(([n]) => est.madrugada || n !== 'Madrugada');
+      const bloco = h => {
         const b = blocos.get(h) || { texto: '', feito: false };
         const id = `tb-${contexto}-${h.replace(':', '')}`;
         const texto = el('input', { type: 'text', id, value: b.texto, placeholder: '—', autocomplete: 'off',
@@ -75,13 +77,22 @@ App.timebox = (() => {
         texto.addEventListener('input', () => { check.disabled = !texto.value.trim(); });
         texto.addEventListener('keydown', e => {
           if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-            const irmao = e.key === 'ArrowUp' ? linha.previousElementSibling : linha.nextElementSibling;
-            if (irmao) { e.preventDefault(); irmao.querySelector('input[type=text]').focus(); }
+            // Passa para o horário seguinte/anterior, mesmo que esteja na próxima coluna.
+            const todos = [...lista.querySelectorAll('.timebox-bloco input[type=text]')];
+            const prox = todos[todos.indexOf(texto) + (e.key === 'ArrowUp' ? -1 : 1)];
+            if (prox) { e.preventDefault(); prox.focus(); }
           }
         });
         const linha = el('li', { class: ['timebox-bloco', h === atual ? 'agora' : '', b.feito ? 'feito' : '', h.endsWith(':00') ? 'hora-cheia' : ''].join(' ').trim() },
           el('label', { for: id, class: 'timebox-hora', text: h }), texto, check);
         return linha;
+      };
+      const lista = el('div', { class: 'timebox-periodos' }, PERIODOS.map(([nome, de, ate]) => {
+        const hs = horarios(de, ate);
+        const cheios = hs.filter(h => blocos.get(h)?.texto).length;
+        return el('section', { class: 'timebox-periodo', 'aria-label': `${nome}, ${hs[0]} às ${String(ate).padStart(2, '0')}:00` },
+          el('h3', {}, nome, el('span', { class: 'dica', text: cheios ? ` · ${cheios} bloco(s)` : '' })),
+          el('ol', { class: 'timebox-lista' }, hs.map(bloco)));
       }));
       const data = el('input', { type: 'date', value: est.data, 'aria-label': 'Dia do timeboxing',
         onchange: e => { if (e.target.value) { est.data = e.target.value; desenhar(); } } });
@@ -97,8 +108,7 @@ App.timebox = (() => {
         el('p', { class: 'dica', text: r.total ? `${r.feitos} de ${r.total} blocos feitos. Enter ou setas passam para o próximo horário.` : 'Escreva o que vai fazer em cada horário. Enter ou setas passam para o próximo.' }),
         lista,
         el('label', { class: 'opcao' }, el('input', { type: 'checkbox', checked: est.madrugada, onchange: e => { est.madrugada = e.target.checked; desenhar(); } }), ' Mostrar madrugada (00:00–05:00)'));
-      // Leva o horário atual para perto do topo da lista.
-      if (atual) requestAnimationFrame(() => { const li = lista.querySelector('.agora'); if (li) lista.scrollTop = li.offsetTop - lista.offsetTop - 40; });
+
     }
     desenhar();
     return raiz;

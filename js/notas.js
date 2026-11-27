@@ -122,7 +122,8 @@ App.notas = (() => {
       conteudo);
   }
 
-  function render(container) {
+  // embutido: desenhada dentro da aba Notas de Estudo (título vira h2).
+  function render(container, opcoes = {}) {
     const filtradas = () => {
       const q = estado.busca.trim().toLowerCase();
       return todas()
@@ -149,13 +150,13 @@ App.notas = (() => {
     const chips = el('div', { class: 'chips', role: 'group', 'aria-label': 'Matérias' },
       [['', todas().length], ...materias()].map(([n, c]) => el('button', {
         type: 'button', class: 'chip', 'aria-pressed': String(estado.materia === n), text: `${n || 'Todas'} (${c})`,
-        onclick: () => { estado.materia = n; render(container); },
+        onclick: () => { estado.materia = n; render(container, opcoes); },
       })));
     const rev = paraRevisar().length;
 
     container.replaceChildren(
       el('header', { class: 'cabecalho-tela' },
-        el('h1', { text: 'Notas de estudo' }),
+        el(opcoes.embutido ? 'h2' : 'h1', { text: 'Notas de estudo' }),
         el('button', { type: 'button', text: '+ Nova nota', onclick: () => editar(null) })),
       rev ? el('p', { class: 'aviso suave', text: `${rev} nota(s) para revisar hoje.` }) : '',
       chips,

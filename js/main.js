@@ -8,13 +8,13 @@
     tarefas: { titulo: 'Tarefas', curto: 'Tarefas', icone: 'tarefas', modulo: () => App.tarefas },
     calendario: { titulo: 'Calendário', curto: 'Agenda', icone: 'agenda', modulo: () => App.calendario },
     estudo: { titulo: 'Estudo', curto: 'Estudo', icone: 'estudo', modulo: () => App.estudo },
-    notas: { titulo: 'Notas', curto: 'Notas', icone: 'notas', modulo: () => App.notas },
     habitos: { titulo: 'Hábitos', curto: 'Hábitos', icone: 'alvo', modulo: () => App.habitos },
     dieta: { titulo: 'Dieta', curto: 'Dieta', icone: 'folha', modulo: () => App.dieta },
     financas: { titulo: 'Finanças', curto: 'Finanças', icone: 'carteira', modulo: () => App.financeiro },
     leitura: { titulo: 'Leitura', curto: 'Livros', icone: 'livro', modulo: () => App.livros },
     entretenimento: { titulo: 'Entretenimento', curto: 'Filmes', icone: 'tela', modulo: () => App.entretenimento },
     arte: { titulo: 'Arte', curto: 'Arte', icone: 'paleta', modulo: () => App.arte },
+    ver: { titulo: 'Compartilhado', curto: 'Compartilhado', icone: 'compartilhar', modulo: () => App.compartilhar, oculta: true, publica: true },
     perfil: { titulo: 'Perfil', curto: 'Perfil', icone: 'pessoa', modulo: () => App.perfil, oculta: true }, // botão com a foto, no canto
   };
   const APELIDOS = { livros: 'leitura', entrada: 'tarefas', financeiro: 'financas' }; // endereços antigos continuam funcionando
@@ -22,7 +22,8 @@
   const nav = document.getElementById('nav');
   const infoPasta = document.getElementById('info-pasta');
 
-  const rotaAtual = () => { const h = location.hash.replace(/^#\/?/, ''); const r = APELIDOS[h] || h; return ROTAS[r] ? r : 'inicio'; };
+  // "#/estudo/notas" → estudo; "#/ver?d=..." → ver. O resto do endereço fica para a própria página.
+  const rotaAtual = () => { const h = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]; const r = APELIDOS[h] || h; return ROTAS[r] ? r : 'inicio'; };
 
   function desenharNav() {
     const atual = rotaAtual();
@@ -33,10 +34,15 @@
 
   let rotaDesenhada = null;
   function renderizar() {
+    // Endereços antigos de páginas que viraram abas.
+    const VIROU_ABA = { notas: '#/estudo/notas' };
+    const bruto = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
+    if (VIROU_ABA[bruto]) { location.replace(VIROU_ABA[bruto]); return; }
     desenharNav();
-    if (!App.store.conectado()) return;
     const id = rotaAtual();
     const r = ROTAS[id];
+    if (r.publica) { rotaDesenhada = id; r.modulo().render(principal); return; } // link compartilhado: não precisa de pasta
+    if (!App.store.conectado()) { if (rotaDesenhada === 'ver') { rotaDesenhada = null; boasVindas(); } return; }
     document.title = `${r.titulo} · Bit-life`;
     r.modulo().render(principal);
     if (id !== rotaDesenhada) { rotaDesenhada = id; App.animacao.entrada(principal); }
@@ -92,6 +98,7 @@
     desenharNav();
     // Tenta reconectar sem pedir nada; se o navegador exigir clique, mostra a tela de boas-vindas.
     const ok = App.store.suportado() && await App.store.reconectar(false).catch(() => false);
+    if (rotaAtual() === 'ver') { rotaDesenhada = 'ver'; ROTAS.ver.modulo().render(principal); return; }
     if (!ok) boasVindas();
   })();
 })();

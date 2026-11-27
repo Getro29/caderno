@@ -113,6 +113,30 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByRole('button', { name: 'Salvar' }).click();
   await page.getByRole('button', { name: /Derivadas/ }).click();
   await page.locator('.nota h2', { hasText: 'Derivadas' }).waitFor();
+  if (!page.url().endsWith('#/estudo/notas')) throw new Error('#/notas deveria levar à aba Notas de Estudo: ' + page.url());
+
+  // cadernos (aba de Estudo): criar, escrever, anexar vídeo e imagem
+  await page.getByRole('link', { name: 'Cadernos' }).click();
+  await page.getByRole('button', { name: 'Novo caderno' }).click();
+  await page.getByLabel('Título').fill('Revolução Francesa');
+  await page.getByLabel('Tema', { exact: true }).fill('História');
+  await page.getByRole('button', { name: 'Criar caderno' }).click();
+  await page.getByLabel(/Texto do caderno/).fill('## Causas\n\n- crise **fiscal**');
+  await page.getByRole('button', { name: 'Salvar texto' }).click();
+  await page.locator('.caderno-conteudo strong', { hasText: 'fiscal' }).waitFor();
+  await page.getByRole('button', { name: 'Vídeo' }).click();
+  await page.getByLabel('Endereço do vídeo').fill('https://youtu.be/abcdefghijk?t=90');
+  await page.getByLabel('Título', { exact: true }).fill('Aula 1');
+  await page.getByRole('button', { name: 'Anexar' }).click();
+  await page.getByRole('button', { name: 'Carregar vídeo aqui' }).waitFor();
+  if (await page.locator('iframe').count()) throw new Error('o vídeo não pode carregar sozinho');
+  await page.locator('#caderno-img').setInputFiles({ name: 'mapa.png', mimeType: 'image/png', buffer: png });
+  await page.locator('.caderno-imagem img[src^="blob:"]').waitFor();
+  await page.getByRole('button', { name: 'Carregar vídeo aqui' }).click();
+  await page.locator('iframe[src="https://www.youtube-nocookie.com/embed/abcdefghijk?start=90"]').waitFor();
+  await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/caderno.png', fullPage: true });
+  await page.getByRole('button', { name: 'Cadernos', exact: true }).click();
+  await page.getByRole('button', { name: /Revolução Francesa.*1 vídeo.*1 imagem/ }).waitFor();
 
   // leitura (o endereço antigo #/livros continua funcionando)
   await page.goto(URL + '#/livros');
@@ -196,12 +220,20 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByLabel('Horas de sono (noite anterior)').press('Tab');
   await page.getByLabel('Como foi o dia').selectOption('4');
   await page.getByText('2/1 dias').or(page.getByText(/1\/\d+ dias · \d+%/).first()).first().waitFor();
-  // nível: 2 de 4 hábitos = 50 XP
+  // nível: Bíblia agora é métrica (sem XP) → só Leitura conta: 1 de 4 hábitos = 25 XP
+  await page.locator('.nivel', { hasText: '25 / 500 XP' }).first().waitFor();
+  await page.locator(`.linha-metrica [data-celula="${hojeISO}|biblia"][aria-pressed="true"]`).waitFor();
+  // Socializar entrou no lugar da Bíblia como hábito: 2 de 4 = 50 XP
+  await page.getByRole('checkbox', { name: 'Socializar' }).check();
+  await page.locator(`[data-celula="${hojeISO}|socializar"][aria-pressed="true"]`).waitFor();
   await page.locator('.nivel', { hasText: '50 / 500 XP' }).first().waitFor();
   await page.locator('#nivel-topo', { hasText: 'Nv 1' }).waitFor();
-  // socializar: fora do XP, aparece como linha própria na grade do mês
-  await page.getByRole('checkbox', { name: /Socializei/ }).check();
-  await page.locator(`[data-celula="${hojeISO}|socializar"][aria-pressed="true"]`).waitFor();
+  // nova métrica sem XP
+  await page.getByText('Editar hábitos e métricas').click();
+  await page.getByLabel('Nova métrica').fill('Videogame');
+  await page.getByLabel('Nova métrica').press('Enter');
+  await page.getByRole('checkbox', { name: 'Videogame' }).check();
+  await page.locator(`.linha-metrica [data-celula="${hojeISO}|videogame"][aria-pressed="true"]`).waitFor();
   await page.locator('.nivel', { hasText: '50 / 500 XP' }).first().waitFor();
   await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/habitos.png', fullPage: true });
 
@@ -284,7 +316,7 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.screenshot({ path: (process.env.SHOT_DIR || '.') + '/estudo.png', fullPage: true });
   await page.clock.fastForward('26:00');
   await page.getByText(/Tempo esgotado: Funções! 25 min registrados/).waitFor();
-  await page.getByRole('button', { name: 'Simulados' }).click();
+  await page.getByRole('link', { name: 'Simulados' }).click();
   await page.getByRole('button', { name: '+ Novo simulado' }).click();
   await page.getByLabel('Total de questões').fill('45');
   await page.getByLabel('Acertos').fill('36');
@@ -312,8 +344,34 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByRole('button', { name: 'Salvar' }).click();
   await page.getByText('Entrada vazia').waitFor();
 
+  // compartilhar: só livro lendo/lido, filme visto e nível; o link abre sem pasta nenhuma
+  const compart = await page.evaluate(() => {
+    const livros = App.livros.todos();
+    const lido = livros.find(d => d.meta.status === 'lido');
+    const quero = livros.find(d => d.meta.status === 'quero-ler');
+    return { link: App.compartilhar.link(App.compartilhar.cartaoDe('livro', lido)), bloqueado: App.compartilhar.cartaoDe('livro', quero), nivel: App.compartilhar.cartaoDe('nivel') };
+  });
+  if (compart.bloqueado) throw new Error('livro em quero-ler não pode ser compartilhado');
+  if (compart.nivel) throw new Error('nível 1 não tem o que compartilhar');
+  if (/resenha|tags|Dizem/.test(decodeURIComponent(compart.link))) throw new Error('o link levou dados demais');
+  const visitante = await browser.newPage();
+  await visitante.route('https://capas.exemplo/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: png }));
+  await visitante.goto(compart.link.replace(/^.*?#/, URL + '#'));
+  await visitante.getByRole('heading', { name: 'Dom Casmurro' }).waitFor();
+  await visitante.getByText(/Getro terminou de ler "Dom Casmurro", de Machado de Assis\./).waitFor();
+  await visitante.getByRole('link', { name: 'Começar o meu Bit-life' }).click();
+  await visitante.getByRole('heading', { name: 'Bem-vindo ao Bit-life' }).waitFor();
+  await visitante.goto(URL + '#/ver?d=bGl4bw');
+  await visitante.getByRole('heading', { name: 'Link inválido' }).waitFor();
+  await visitante.close();
+  await page.goto(URL + '#/leitura');
+  await page.getByRole('button', { name: /^Lidos/ }).click();
+  await page.getByRole('button', { name: /Dom Casmurro/ }).first().click();
+  await page.getByRole('button', { name: /Compartilhar: Getro terminou de ler/ }).waitFor();
+  await page.keyboard.press('Escape');
+
   // Nenhuma página pode mostrar "null" ou "undefined" soltos na tela.
-  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'notas', 'habitos', 'dieta', 'financas', 'leitura', 'entretenimento', 'arte', 'perfil']) {
+  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'habitos', 'dieta', 'financas', 'leitura', 'entretenimento', 'arte', 'perfil', 'estudo/notas', 'estudo/cadernos', 'estudo/simulados']) {
     await page.goto(URL + '#/' + rota);
     await page.waitForTimeout(150);
     const ruins = await page.evaluate(() => {
@@ -352,7 +410,9 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   });
   for (const [c, t] of Object.entries(arquivos).sort()) console.log(`===== ${c}\n${t}`);
   if (!/nome: Getro/.test(arquivos['Caderno/perfil.md'] || '') || !/foto: Caderno\/imagens\/foto\.png/.test(arquivos['Caderno/perfil.md'])) throw new Error('perfil.md incompleto');
-  if (!/socializou: true/.test(arquivos[`Diario/${hojeISO}.md`] || '')) throw new Error('socializou não gravado no diário');
+  if (!/- socializar/.test(arquivos[`Diario/${hojeISO}.md`] || '')) throw new Error('Socializar não gravado no diário');
+  if (!/metricas:\n  - Bíblia\n  - Videogame/.test(arquivos['Caderno/habitos.md'] || '')) throw new Error('métricas não gravadas em Caderno/habitos.md');
+  if (!/!\[\[revolucao-francesa-\w+\.png\]\]/.test(arquivos['Estudo/Cadernos/revolucao-francesa.md'] || '')) throw new Error('imagem do caderno não registrada');
   console.log('ERROS:', erros.length ? erros : 'nenhum');
   await browser.close();
   process.exit(erros.length ? 1 : 0);

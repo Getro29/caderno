@@ -137,6 +137,7 @@ App.entretenimento = (() => {
         link ? el('p', {}, el('a', { href: link.href, target: '_blank', rel: 'noopener noreferrer', text: link.texto })) : null,
         el('h3', { text: 'Resenha' }), resenha)), [
       App.voz.botaoLeitura(() => `${titulo(doc)}. ${App.markdown.textoPuro(doc.corpo)}`),
+      App.compartilhar.botao('tela', doc),
       el('span', { class: 'espaco' }),
       el('button', { type: 'button', text: 'Editar', onclick: () => { dlg.close(); editar(doc); } }),
     ]);

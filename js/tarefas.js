@@ -174,14 +174,13 @@ App.tarefas = (() => {
       el('header', { class: 'cabecalho-tela' },
         el('h1', { text: 'Tarefas e prazos' }),
         el('button', { type: 'button', text: '+ Nova tarefa', onclick: () => editar(null) })),
-      el('div', { class: 'tarefas-layout' },
-        el('div', { class: 'tarefas-principal' },
-          App.entrada.secao(),
-          el('section', { 'aria-labelledby': 'titulo-tarefas' },
-            el('h2', { id: 'titulo-tarefas', class: 'sr', text: 'Tarefas' }),
-            el('div', { class: 'barra' }, busca, filtro, visao),
-            area)),
-        el('aside', { class: 'tarefas-lateral' }, App.timebox.componente('dia'))));
+      el('div', { class: 'tarefas-principal' },
+        App.entrada.secao(),
+        el('section', { 'aria-labelledby': 'titulo-tarefas' },
+          el('h2', { id: 'titulo-tarefas', class: 'sr', text: 'Tarefas' }),
+          el('div', { class: 'barra' }, busca, filtro, visao),
+          area),
+        App.timebox.componente('dia')));
     area.append(estado.visao === 'lista' ? vistaLista(docs) : vistaQuadro(docs));
   }
 

@@ -251,17 +251,23 @@ App.estudo = (() => {
         : el('p', { class: 'vazio', text: 'Nenhum simulado registrado. Adicione o primeiro: é só informar o total de questões e os acertos.' }));
   }
 
+  // Abas com endereço próprio (#/estudo/notas, #/estudo/cadernos…), para voltar e favoritar.
+  const ABAS = { hoje: 'Hoje', notas: 'Notas', cadernos: 'Cadernos', simulados: 'Simulados' };
   function render(container) {
-    const ABAS = { hoje: 'Hoje', simulados: 'Simulados' };
+    const daUrl = location.hash.replace(/^#\/?/, '').split(/[/?]/)[1];
+    estado.aba = ABAS[daUrl] ? daUrl : 'hoje';
     const redesenhar = () => render(container);
+    const area = el('div', { class: 'estudo-aba' });
     container.replaceChildren(
       el('header', { class: 'cabecalho-tela' }, el('h1', { text: 'Estudo' })),
-      el('div', { class: 'alternador abas', role: 'group', 'aria-label': 'Seção do estudo' },
-        Object.entries(ABAS).map(([v, r]) => el('button', { type: 'button', 'aria-pressed': String(estado.aba === v), text: r, onclick: () => { estado.aba = v; redesenhar(); } }))),
-      estado.aba === 'hoje' ? el('div', { class: 'tarefas-layout' },
-        el('div', { class: 'tarefas-principal' }, painelTemporizador(redesenhar), checklist()),
-        el('aside', { class: 'tarefas-lateral' }, App.timebox.componente('estudo')))
-        : abaSimulados());
+      el('nav', { class: 'alternador abas', 'aria-label': 'Seções do estudo' },
+        Object.entries(ABAS).map(([v, r]) => el('a', { href: '#/estudo/' + v, 'aria-current': estado.aba === v ? 'page' : null, text: r }))),
+      area);
+    if (estado.aba === 'hoje') {
+      area.append(el('div', { class: 'estudo-hoje' }, painelTemporizador(redesenhar), checklist()), App.timebox.componente('estudo'));
+    } else if (estado.aba === 'notas') App.notas.render(area, { embutido: true });
+    else if (estado.aba === 'cadernos') App.cadernos.render(area);
+    else area.append(abaSimulados());
   }
 
   const ultimoSimulado = () => simulados()[0] || null;

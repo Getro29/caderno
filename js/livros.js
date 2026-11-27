@@ -125,6 +125,7 @@ App.livros = (() => {
         el('p', {}, el('a', { href: linkGoodreads(m), target: '_blank', rel: 'noopener noreferrer', text: 'Ver no Goodreads' })),
         el('h3', { text: 'Resenha' }), resenha)), [
       App.voz.botaoLeitura(() => `${titulo(doc)}${m.autor ? ', de ' + m.autor : ''}. ${App.markdown.textoPuro(doc.corpo)}`),
+      App.compartilhar.botao('livro', doc),
       el('span', { class: 'espaco' }),
       el('button', { type: 'button', text: 'Editar', onclick: () => { dlg.close(); editar(doc); } }),
     ]);

@@ -22,7 +22,7 @@ App.gamificacao = (() => {
 
   function xpDoDia(data) {
     const total = App.diario.habitos().length || 1;
-    return Math.round(XP_DIA * Math.min(1, App.diario.feitos(data).length / total));
+    return Math.round(XP_DIA * Math.min(1, App.diario.feitosXP(data) / total)); // métricas não contam
   }
 
   function progresso() {
@@ -68,7 +68,9 @@ App.gamificacao = (() => {
     return el('div', { class: 'nivel' + (compacto ? ' compacto' : '') },
       el('div', { class: 'nivel-emblema', 'aria-hidden': 'true' }, el('span', { text: p.nivel })),
       el('div', { class: 'nivel-texto' },
-        el('div', { class: 'linha-stat' }, el('strong', { text: `Nível ${p.nivel}` }), el('span', { class: 'dica', text: `${p.noNivel} / ${p.xpNivel} XP` })),
+        el('div', { class: 'linha-stat' },
+          el('span', { class: 'nivel-titulo' }, el('strong', { text: `Nível ${p.nivel}` }), App.compartilhar.botao('nivel', null, { classe: 'icone pequeno', rotulo: 'Compartilhar nível' })),
+          el('span', { class: 'dica', text: `${p.noNivel} / ${p.xpNivel} XP` })),
         el('div', { class: 'barra-progresso grande', role: 'img', 'aria-label': `${p.pct}% do nível ${p.nivel}; faltam ${p.faltam} XP` }, preenchimento),
         el('span', { class: 'dica', text: `Hoje: +${p.hoje} XP · cada hábito vale ${p.porHabito} XP · faltam ${p.faltam} XP${p.sequencia ? ` · ${p.sequencia} dia(s) seguidos` : ''}` })));
   }
