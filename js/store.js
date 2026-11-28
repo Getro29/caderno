@@ -2,7 +2,7 @@
 // Único ponto de acesso aos arquivos. Interface genérica (listar, ler, gravar, criar, mover,
 // moverParaLixeira) para que um adaptador futuro (ex.: sincronização no celular) a substitua.
 App.store = (() => {
-  const PASTAS = ['Entrada', 'Tarefas', 'Notas', 'Livros', 'Entretenimento', 'Calendario', 'Arte', 'Diario', 'Timebox', 'Dieta', 'Estudo', 'Financeiro', 'Caderno'];
+  const PASTAS = ['Entrada', 'Tarefas', 'Notas', 'Livros', 'Entretenimento', 'Calendario', 'Arte', 'Diario', 'Timebox', 'Dieta', 'Estudo', 'Financeiro', 'Caderno', 'Desafios'];
   const cache = new Map(); // caminho -> doc
   let raiz = null;
 

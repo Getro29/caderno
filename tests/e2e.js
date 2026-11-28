@@ -370,8 +370,91 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByRole('button', { name: /Compartilhar: Getro terminou de ler/ }).waitFor();
   await page.keyboard.press('Escape');
 
+  // desafios: corrida de leitura entre duas pastas diferentes, placar indo e voltando por link
+  const fecharLinkSeAberto = async alvo => {
+    await alvo.waitForTimeout(400);
+    const dlgLink = alvo.getByRole('heading', { name: 'Link para compartilhar' });
+    if (await dlgLink.isVisible()) await alvo.getByRole('button', { name: 'Fechar', exact: true }).last().click();
+  };
+  await page.goto(URL + '#/desafios');
+  await page.getByText('Nenhum desafio ainda.').waitFor();
+  await page.getByRole('button', { name: '+ Novo desafio' }).click();
+  await page.getByLabel('O que todos vão ler ou assistir').selectOption({ label: 'O Cortiço' });
+  await page.getByRole('button', { name: 'Criar desafio' }).click();
+  await fecharLinkSeAberto(page);
+  await page.getByRole('heading', { name: 'Quem termina O Cortiço primeiro?' }).waitFor();
+  if (await page.evaluate(() => App.livros.todos().find(d => d.meta.titulo === 'O Cortiço').meta.status) !== 'lendo') throw new Error('criar o desafio não passou o livro para Lendo');
+  const linkDesafio = await page.evaluate(() => App.desafios.link(App.desafios.todos()[0]));
+  if (!/#\/desafio\?d=/.test(linkDesafio)) throw new Error('link de desafio mal formado');
+
+  // a amiga abre o link no computador dela (outra pasta), escolhe a pasta e entra
+  const amiga = await browser.newPage();
+  amiga.on('pageerror', e => erros.push('amiga: ' + e.message));
+  amiga.on('dialog', d => d.accept());
+  await amiga.addInitScript(() => { window.showDirectoryPicker = async () => navigator.storage.getDirectory(); });
+  await amiga.goto(linkDesafio.replace(/^.*?#/, URL + '#'));
+  await amiga.getByRole('heading', { name: 'Quem termina O Cortiço primeiro?' }).waitFor();
+  await amiga.getByText('Desafio criado por Getro.').waitFor();
+  await amiga.getByRole('button', { name: 'Abrir minha pasta do Bit-life' }).click();
+  await amiga.getByRole('button', { name: 'Entrar no desafio' }).click();
+  await amiga.getByRole('heading', { name: 'Desafios', level: 1 }).waitFor();
+  await amiga.locator('.placar', { hasText: 'Getro' }).waitFor();
+  const livroAmiga = await amiga.evaluate(() => App.livros.todos().find(d => d.meta.titulo === 'O Cortiço')?.meta.status);
+  if (livroAmiga !== 'lendo') throw new Error('o livro do desafio não entrou em Lendo na pasta da amiga: ' + JSON.stringify(await amiga.evaluate(() => [App.livros.todos().map(d => [d.caminho, d.meta]), App.desafios.todos().map(d => d.meta)])));
+  // ela põe o nome, termina o livro em 3 dias e manda o placar de volta
+  await amiga.evaluate(async () => {
+    await App.store.gravar('Caderno/perfil.md', { tipo: 'perfil', nome: 'Ana', frase: '', foto: null, capa: null }, '');
+    const des = App.desafios.todos()[0];
+    const l = App.livros.todos().find(d => d.meta.titulo === 'O Cortiço');
+    const fim = App.somarDias(des.meta.entrei, 2);
+    await App.store.gravar(l.caminho, { ...l.meta, status: 'lido', fim }, l.corpo);
+  });
+  const linkVolta = await amiga.evaluate(() => App.desafios.link(App.desafios.todos()[0]));
+  await amiga.goto(URL + '#/desafios');
+  await amiga.getByText('Você terminou em 3 dias.').waitFor();
+  await amiga.close();
+
+  await page.goto(linkVolta.replace(/^.*?#/, URL + '#'));
+  await page.getByText('Você já está neste desafio.').waitFor();
+  await page.getByRole('button', { name: 'Atualizar o placar' }).click();
+  await page.getByRole('heading', { name: 'Desafios', level: 1 }).waitFor();
+  await page.locator('.placar', { hasText: 'Ana' }).getByText('3 dias').waitFor();
+  // eu termino no mesmo dia em que entrei: 1 dia, venço e ganho o selo
+  await page.evaluate(async () => {
+    const l = App.livros.todos().find(d => d.meta.titulo === 'O Cortiço');
+    await App.store.gravar(l.caminho, { ...l.meta, status: 'lido', fim: App.hoje() }, l.corpo);
+  });
+  await page.getByText('Encerrado. Venceu: você.').waitFor();
+  await page.locator('.selo.campeao').waitFor();
+  await page.goto(URL + '#/perfil');
+  await page.locator('.selo-conquista.ganho', { hasText: 'Campeão' }).waitFor();
+
+  // lista de filmes: filmes novos entram em "Quero ver"; só conta o que for visto depois de entrar
+  await page.goto(URL + '#/desafios');
+  await page.getByRole('button', { name: '+ Novo desafio' }).click();
+  await page.getByLabel('Tipo de desafio').selectOption('lista');
+  await page.getByLabel('Outros filmes').fill('Alien (1979)\nDuna\nalien');
+  await page.getByLabel('Nome do desafio').fill('Maratona de dezembro');
+  await page.getByRole('button', { name: 'Criar desafio' }).click();
+  await fecharLinkSeAberto(page);
+  await page.getByRole('heading', { name: 'Maratona de dezembro' }).waitFor();
+  await page.evaluate(async () => {
+    const a = App.entretenimento.todos().find(d => d.meta.titulo === 'Alien');
+    if (!a || a.meta.status !== 'quero-ver' || a.meta.ano !== 1979) throw new Error('Alien não entrou em Quero ver');
+    await App.store.gravar(a.caminho, { ...a.meta, status: 'visto', fim: App.hoje() }, a.corpo);
+  });
+  await page.getByText('Você viu 1 de 2 filmes da lista.').waitFor();
+  const corpoDesafio = await page.evaluate(() => App.store.obter('Desafios/quem-termina-o-cortico-primeiro.md')?.corpo || '');
+  if (!/## Placar/.test(corpoDesafio) || !/\| Ana \|.*\| 3 \|/.test(corpoDesafio) || !/\| Getro \|.*\| 1 \|/.test(corpoDesafio)) throw new Error('placar não gravado no arquivo do desafio:\n' + corpoDesafio);
+  const ida = await page.evaluate(() => App.desafios.lerCorpo('## Lista\n\n- Alien (1979)\n- [x] Duna\n\nnota minha\n\n## Placar\n\n| Participante | Começou | Terminou | Dias | Vistos | Último visto | Código |\n|---|---|---|---:|---:|---|---|\n| Bia | 2026-01-01 | 2026-01-04 | 4 |  |  | p-bia |\n'));
+  if (ida.lista.length !== 2 || ida.lista[0].ano !== '1979' || ida.participantes[0]?.dias !== 4 || !ida.outras.includes('nota minha')) throw new Error('leitura do corpo do desafio falhou: ' + JSON.stringify(ida));
+  const ruim = await browser.newPage();
+  await ruim.goto(URL + '#/desafio?d=bGl4bw');
+  await ruim.getByRole('heading', { name: 'Link inválido' }).waitFor();
+  await ruim.close();
+
   // Nenhuma página pode mostrar "null" ou "undefined" soltos na tela.
-  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'habitos', 'dieta', 'financas', 'leitura', 'entretenimento', 'arte', 'perfil', 'estudo/notas', 'estudo/cadernos', 'estudo/simulados']) {
+  for (const rota of ['inicio', 'tarefas', 'calendario', 'estudo', 'habitos', 'dieta', 'financas', 'leitura', 'entretenimento', 'arte', 'desafios', 'perfil', 'estudo/notas', 'estudo/cadernos', 'estudo/simulados']) {
     await page.goto(URL + '#/' + rota);
     await page.waitForTimeout(150);
     const ruins = await page.evaluate(() => {

@@ -54,9 +54,10 @@ App.compartilhar = (() => {
     return `${quem} chegou ao nível ${c.nivel} no Bit-life.`;
   }
 
-  async function compartilhar(cartao) {
-    const url = link(cartao);
-    const texto = frase(cartao);
+  const compartilhar = cartao => enviar(link(cartao), frase(cartao));
+
+  // Abre o menu de compartilhar do sistema; sem ele, copia o link; sem permissão, mostra o link.
+  async function enviar(url, texto, dica = 'Quem abrir vê só este cartão. Nada da sua pasta vai junto.') {
     if (navigator.share) {
       try { await navigator.share({ title: 'Bit-life', text: texto, url }); return; } catch (e) { if (e.name === 'AbortError') return; }
     }
@@ -64,7 +65,7 @@ App.compartilhar = (() => {
     const campo = el('input', { type: 'text', value: url, readonly: true });
     const dlg = App.dialogo('Link para compartilhar', el('div', {},
       el('p', { text: texto }), App.campo('Copie o link', campo, { voz: false, largo: true }),
-      el('p', { class: 'dica', text: 'Quem abrir vê só este cartão. Nada da sua pasta vai junto.' })), [
+      el('p', { class: 'dica', text: dica })), [
       el('span', { class: 'espaco' }), el('button', { type: 'button', text: 'Fechar', onclick: () => dlg.close() })]);
     campo.select();
   }
@@ -120,5 +121,5 @@ App.compartilhar = (() => {
       convite);
   }
 
-  return { botao, compartilhar, cartaoDe, link, render, frase };
+  return { botao, compartilhar, cartaoDe, link, render, frase, enviar, codificar, decodificar, limitar, urlSegura };
 })();

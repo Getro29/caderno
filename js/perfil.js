@@ -167,6 +167,7 @@ App.perfil = (() => {
       { nome: 'Leitor', desc: '10 livros lidos', ok: lidos >= 10, icone: 'livro' },
       { nome: 'Cinéfilo', desc: '25 filmes ou séries vistos', ok: vistos >= 25, icone: 'tela' },
       { nome: 'Enturmado', desc: '8 dias socializando no mês', ok: social >= 8, icone: 'pessoa' },
+      { nome: 'Campeão', desc: 'venceu um desafio de leitura ou de filmes', ok: (App.desafios?.vitorias() || 0) >= 1, icone: 'trofeu' },
     ];
   }
 

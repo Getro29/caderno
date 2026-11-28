@@ -2,7 +2,7 @@
 
 App web estático, hospedado no **GitHub Pages** (domínio próprio depois), que roda
 **no navegador do usuário** para organizar tarefas (com timeboxing), calendário (feriados, esportes,
-vestibulares), estudo (temporizador, simulados), hábitos (com nível/XP), perfil (foto, capa, selos, gráfico de equilíbrio), dieta, finanças, notas, leitura, entretenimento
+vestibulares), estudo (temporizador, simulados), hábitos (com nível/XP), perfil (foto, capa, selos, gráfico de equilíbrio), desafios entre amigos (leitura/filmes), dieta, finanças, notas, leitura, entretenimento
 (filmes/séries/animes), uma galeria de arte e um Início com briefing diário. Os dados vivem como arquivos `.md` com frontmatter YAML numa pasta escolhida
 pelo usuário, compatível com um vault do Obsidian.
 
@@ -64,7 +64,7 @@ pelo usuário, compatível com um vault do Obsidian.
     api.jolpi.ca; ESPN em site.api.espn.com para NFL e futebol). Nada do usuário é enviado. Capas são guardadas como URL no campo `capa`.
   - `js/cadernos.js`: vídeo do YouTube (youtube-nocookie.com) ou Vimeo só é embutido quando a
     pessoa clica em "Carregar vídeo aqui"; antes disso é só um cartão com link.
-  - Link compartilhado (`#/ver?d=...`): quem o abre carrega a capa (URL pública) que veio no link.
+  - Link compartilhado (`#/ver?d=...`) ou de desafio (`#/desafio?d=...`): quem o abre carrega a capa (URL pública) que veio no link.
   Goodreads e Letterboxd não têm API aberta: a sincronização é por **importação do CSV**
   que esses sites exportam (Goodreads → Export Library; Letterboxd → Settings → Data).
 - Usar só caminhos relativos (`./css/...`) para funcionar tanto em `usuario.github.io/caderno`
@@ -91,6 +91,7 @@ js/
   notas.js            # Notas de estudo (aba #/estudo/notas; #/notas redireciona)
   cadernos.js         # Cadernos de estudo (aba #/estudo/cadernos): temas, texto, vídeos, imagens
   compartilhar.js     # link de compartilhar (#/ver?d=…): livro lendo/lido, filme/série visto, nível ≥ 2
+  desafios.js         # Desafios (#/desafios) e link recebido (#/desafio?d=…): corrida de leitura/série, lista de filmes
   catalogo.js         # busca de capas/dados em catálogos públicos + importação CSV Goodreads/Letterboxd
   livros.js           # página "Leitura" (App.livros; arquivos em Livros/, rota #/leitura)
   entretenimento.js   # filmes, séries e animes
@@ -146,6 +147,7 @@ Convenções importantes de gravação:
   Caderno/perfil.md           # perfil (nome, frase, foto, capa); imagens em Caderno/imagens/
   Caderno/progresso.md        # retrato do nível/XP (recalculado a partir do Diario/)
   Caderno/missoes/AAAA-MM-DD.md
+  Desafios/<slug>.md          # desafio com amigos (placar no corpo)
   .lixeira/
 ```
 
@@ -193,6 +195,11 @@ Campos obrigatórios por tipo (`tipo` sempre presente para identificar o arquivo
   `| Data | Tipo | Descrição | Categoria | Valor (R$) | Situação |`, tipo `entrada|saida`,
   situação `feito|previsto`, valor com ponto decimal (`1200.00`). Lançamento repetido = uma linha
   `previsto` em cada mês seguinte.
+- **desafio** (`Desafios/<slug>.md`): `tipo, titulo, modo (corrida|lista), categoria (livro|serie|anime|filme), obra, autor,
+  ano, capa, inicio, prazo, criador, codigo (d-…, igual para todos), eu (meu id p-…), entrei, arquivo (livro/série ligado), criado, tags`
+  — corpo: `## Lista` (`- Título (ano)`, só no modo lista) e `## Placar` (tabela
+  `| Participante | Começou | Terminou | Dias | Vistos | Último visto | Código |`). A minha linha é recalculada dos meus
+  livros/filmes e regravada (inline) quando muda; as dos outros vêm dos links.
 - **progresso** (`Caderno/progresso.md`, retrato recalculado; a fonte é o `Diario/`): `tipo, xp_total,
   nivel, xp_para_proximo, xp_por_area {habitos}, sequencia_dias, ultimo_dia_ativo`
 
@@ -209,6 +216,7 @@ Definida pelo usuário: **XP vem dos hábitos do check-in diário.**
 - Tudo é calculado a partir dos arquivos `Diario/` (`App.gamificacao.progresso()`); depois de
   marcar um hábito, `aposHabito()` avisa a subida de nível e regrava `Caderno/progresso.md`.
 - Outros eventos continuam passando por `registrarEvento(tipo, id)` mas ainda não dão XP.
+- Decisão do usuário: **vencer um desafio dá o selo "Campeão" no Perfil, mas não dá XP.**
   Missões e XP de outras áreas: decidir com o usuário antes de implementar.
 
 ## Identidade visual
@@ -274,7 +282,7 @@ programador: explicar em linguagem simples, sem jargão.
 - App renomeado para **Bit-life**. Visual novo (roxo/gradiente, cartões com sombra, cabeçalho
   translúcido, tema claro/escuro automático ou escolhido em Preferências).
 - Cabeçalho com nomes curtos + ícone (Início, Tarefas, Agenda, Estudo, Notas, Hábitos, Dieta,
-  Finanças, Livros, Filmes, Arte); em telas < 1340 px só ícones (o nome completo fica no `title`).
+  Finanças, Livros, Filmes, Arte, Desafios); em telas < 1520 px só ícones (o nome completo fica no `title`).
   À direita: selo de nível, sino e botão de Preferências (tema, voz, pasta/recarregar/trocar).
 - **Finanças** (`#/financas`): lançar entrada/saída com categoria, data e "ainda vai acontecer"
   (planejado), repetir todo mês por 3/6/12 meses, marcar planejado como feito, resumo do mês,
@@ -362,6 +370,18 @@ retrato com foto no Início, página Perfil com capa, foto, frase, sobre mim, n�
   imagens por botão, colar ou arrastar).
 - Timeboxing largo: períodos Manhã/Tarde/Noite (e Madrugada opcional) lado a lado, sem rolagem interna,
   abaixo do conteúdo em Tarefas e em Estudo → Hoje.
+
+**Já feito (v5 — Desafios):** página `#/desafios` (menu "Desafios", ícone de troféu). Sem servidor: o placar anda por
+link (`#/desafio?d=<JSON em base64url>`). Decisões do usuário: o link pode levar **datas de início e fim**; a corrida
+conta **dias até terminar** (de quando a pessoa entrou no desafio, ou começou, se for depois, até "Terminei em"; mesmo dia = 1);
+filmes entram como **"quem vê mais da lista"** até o prazo (empate: quem chegou antes); vencer dá **selo, não XP**.
+- Corrida: livro, série ou anime. Entrar põe a obra em Lendo/Assistindo (ou cria). Terminou antes de entrar ou depois do
+  prazo não conta. Lista: filmes que faltam entram em "Quero ver"; só contam os vistos entre entrar e o prazo.
+- Encerra no prazo ou quando todos do placar (≥ 2) terminaram. O link leva só o desafio (título, obra, autor, ano, capa,
+  prazo, lista) e, de cada participante, id, nome, começou, terminou, vistos e último visto. Quem abre sem pasta vê o
+  placar e um botão para abrir a pasta; com pasta, "Entrar no desafio" ou "Atualizar o placar" (fica o resultado mais avançado).
+- Nome do perfil é obrigatório para mandar o link (é o que aparece no placar dos amigos).
+- Menu do topo: com 12 itens, só ícones abaixo de 1520 px.
 
 **Pendente / próximos passos:**
 0. Confirmar no navegador do usuário que as buscas de jogos (ESPN/Jolpica) e de capas

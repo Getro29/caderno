@@ -14,7 +14,9 @@
     leitura: { titulo: 'Leitura', curto: 'Livros', icone: 'livro', modulo: () => App.livros },
     entretenimento: { titulo: 'Entretenimento', curto: 'Filmes', icone: 'tela', modulo: () => App.entretenimento },
     arte: { titulo: 'Arte', curto: 'Arte', icone: 'paleta', modulo: () => App.arte },
+    desafios: { titulo: 'Desafios', curto: 'Desafios', icone: 'trofeu', modulo: () => App.desafios },
     ver: { titulo: 'Compartilhado', curto: 'Compartilhado', icone: 'compartilhar', modulo: () => App.compartilhar, oculta: true, publica: true },
+    desafio: { titulo: 'Desafio', curto: 'Desafio', icone: 'trofeu', modulo: () => ({ render: c => App.desafios.renderConvite(c) }), oculta: true, publica: true }, // link de desafio recebido
     perfil: { titulo: 'Perfil', curto: 'Perfil', icone: 'pessoa', modulo: () => App.perfil, oculta: true }, // botão com a foto, no canto
   };
   const APELIDOS = { livros: 'leitura', entrada: 'tarefas', financeiro: 'financas' }; // endereços antigos continuam funcionando
@@ -22,7 +24,7 @@
   const nav = document.getElementById('nav');
   const infoPasta = document.getElementById('info-pasta');
 
-  // "#/estudo/notas" → estudo; "#/ver?d=..." → ver. O resto do endereço fica para a própria página.
+  // "#/estudo/notas" → estudo; "#/ver?d=..." → ver; "#/desafio?d=..." → desafio. O resto do endereço fica para a própria página.
   const rotaAtual = () => { const h = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]; const r = APELIDOS[h] || h; return ROTAS[r] ? r : 'inicio'; };
 
   function desenharNav() {
@@ -42,7 +44,7 @@
     const id = rotaAtual();
     const r = ROTAS[id];
     if (r.publica) { rotaDesenhada = id; r.modulo().render(principal); return; } // link compartilhado: não precisa de pasta
-    if (!App.store.conectado()) { if (rotaDesenhada === 'ver') { rotaDesenhada = null; boasVindas(); } return; }
+    if (!App.store.conectado()) { if (ROTAS[rotaDesenhada]?.publica) { rotaDesenhada = null; boasVindas(); } return; }
     document.title = `${r.titulo} · Bit-life`;
     r.modulo().render(principal);
     if (id !== rotaDesenhada) { rotaDesenhada = id; App.animacao.entrada(principal); }
@@ -98,7 +100,8 @@
     desenharNav();
     // Tenta reconectar sem pedir nada; se o navegador exigir clique, mostra a tela de boas-vindas.
     const ok = App.store.suportado() && await App.store.reconectar(false).catch(() => false);
-    if (rotaAtual() === 'ver') { rotaDesenhada = 'ver'; ROTAS.ver.modulo().render(principal); return; }
+    const r = ROTAS[rotaAtual()];
+    if (r.publica) { rotaDesenhada = rotaAtual(); r.modulo().render(principal); return; }
     if (!ok) boasVindas();
   })();
 })();
