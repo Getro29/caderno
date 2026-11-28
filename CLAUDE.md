@@ -109,6 +109,11 @@ js/
 tests/e2e.js          # teste Playwright (usa OPFS no lugar da pasta real)
 .claude/skills/ui-ux-pro-max/  # skill de design (só para o Claude; o app não carrega nada dela)
 .claude/skills/motion-design/   # skill de movimento (LottieFiles, MIT): tempos, curvas, coreografia
+.claude/skills/<emil…>/         # skills de Emil Kowalski (MIT): animate, choreograph, review-animations, break-ui…
+.claude/skills/impeccable/      # skill de design de Paul Bakaus (Apache 2.0) + .claude/agents/impeccable-*.md
+.claude/skills/taste-skill/     # tasteskill (MIT), sem as fotos de demonstração (27 MB)
+.claude/skills/karpathy-guidelines/  # regras de comportamento ao programar (Karpathy/multica-ai)
+.mcp.json                       # MCP: Playwright (navegador do ambiente de nuvem) e Figma (precisa login)
 ```
 
 Cada módulo de tela expõe `render(container)` e só fala com os arquivos via `App.store`.
@@ -254,6 +259,14 @@ Não mexe no XP. Selos do perfil também são calculados na hora (nada gravado).
   color, typography, gsap, chart…). As sugestões dela assumem React/Tailwind/GSAP/Google Fonts:
   aproveitar só a ideia e escrever em JS/CSS puro. Ela desaconselha gradiente roxo, mas o visual
   roxo do Bit-life é escolha do usuário — as regras deste arquivo sempre vencem.
+- Outras skills de design instaladas (só para o Claude; o app não carrega nada delas): `emil-design-eng`,
+  `animate`, `choreograph`, `review-animations`, `break-ui` etc. (Emil Kowalski), `impeccable` e `taste-skill`.
+  Elas costumam sugerir React, Framer Motion/Motion, Sonner, Tailwind, fontes e fotos externas: usar só a ideia,
+  em JS/CSS puro e com as regras deste arquivo (zero dependências, sem CDN, preto/vermelho/branco).
+  `taste-skill` é feita para sites de empresa/landing pages; serve para a tela de boas-vindas, não para as telas do app.
+  `animate-expo`, `write-swift` e `ask-sonner` não se aplicam aqui (ficaram por virem no mesmo pacote).
+- Não instalados de propósito: Framer Motion (biblioteca React, quebra a regra de zero dependências) e
+  open-higgsfield (app Next.js de gerar imagem/vídeo com IA paga; não é skill).
 
 ## Estilo de código
 
