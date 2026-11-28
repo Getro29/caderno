@@ -1,6 +1,6 @@
 'use strict';
 // Perfil: foto, capa, nome, frase e "sobre mim" (Caderno/perfil.md + imagens em Caderno/imagens/),
-// vitrine no estilo de perfil de jogo (nível, selos, números, favoritos) e o gráfico de
+// vitrine no estilo de perfil de jogo (nível, selos em destaque, números, favoritos) e o gráfico de
 // equilíbrio (saúde, estudo, diversão, socialização) usado também no Início.
 App.perfil = (() => {
   const { el } = App;
@@ -153,24 +153,6 @@ App.perfil = (() => {
     ];
   }
 
-  // Selos: conquistas calculadas na hora a partir dos arquivos (nada é gravado).
-  function selos() {
-    const p = App.gamificacao.progresso();
-    const lidos = App.livros.todos().filter(d => d.meta.status === 'lido').length;
-    const vistos = App.entretenimento.todos().filter(d => d.meta.status === 'visto').length;
-    const agora = new Date();
-    const social = App.diario.resumoMes(agora.getFullYear(), agora.getMonth()).socialDias;
-    return [
-      { nome: 'Primeiro passo', desc: 'fez o primeiro check-in', ok: p.diasAtivos >= 1, icone: 'check' },
-      { nome: 'Semana firme', desc: '7 dias seguidos com hábitos', ok: p.sequencia >= 7, icone: 'alvo' },
-      { nome: 'Nível 5', desc: 'chegou ao nível 5', ok: p.nivel >= 5, icone: 'estrela' },
-      { nome: 'Leitor', desc: '10 livros lidos', ok: lidos >= 10, icone: 'livro' },
-      { nome: 'Cinéfilo', desc: '25 filmes ou séries vistos', ok: vistos >= 25, icone: 'tela' },
-      { nome: 'Enturmado', desc: '8 dias socializando no mês', ok: social >= 8, icone: 'pessoa' },
-      { nome: 'Campeão', desc: 'venceu um desafio de leitura ou de filmes', ok: (App.desafios?.vitorias() || 0) >= 1, icone: 'trofeu' },
-    ];
-  }
-
   function favoritos() {
     const melhores = l => l.filter(d => Number(d.meta.nota) >= 5).sort((a, b) => Number(b.meta.nota) - Number(a.meta.nota) || String(b.meta.fim || '').localeCompare(String(a.meta.fim || '')));
     return [...melhores(App.livros.todos()), ...melhores(App.entretenimento.todos())].slice(0, 6);
@@ -181,7 +163,6 @@ App.perfil = (() => {
     const p = dados();
     const nome = el('input', { type: 'text', value: p.nome || '', autocomplete: 'nickname' });
     const frase = el('input', { type: 'text', value: p.frase || '', placeholder: 'ex.: Um dia de cada vez' });
-    const sobre = el('textarea', { rows: 5, text: doc()?.corpo?.trim() || '' });
     const escolher = (campo, rotulo) => {
       const entrada = el('input', { type: 'file', accept: 'image/*', class: 'sr', id: 'perfil-' + campo,
         onchange: async e => {
@@ -195,14 +176,13 @@ App.perfil = (() => {
     const dlg = App.dialogo('Editar perfil', el('div', { class: 'grade-form' },
       App.campo('Nome', nome, { voz: false }),
       App.campo('Frase do perfil', frase),
-      App.campo('Sobre mim', sobre, { largo: true }),
       el('div', { class: 'campo largo' }, el('span', { class: 'rotulo', text: 'Foto de perfil' }), escolher('foto', 'Foto')),
       el('div', { class: 'campo largo' }, el('span', { class: 'rotulo', text: 'Imagem de capa (fundo do perfil)' }), escolher('capa', 'Capa')),
       el('p', { class: 'dica largo', text: 'As imagens são copiadas para Caderno/imagens/ na sua pasta. Nada vai para a internet.' })), [
       el('span', { class: 'espaco' }),
       el('button', { type: 'button', class: 'secundario', text: 'Cancelar', onclick: () => dlg.close() }),
       el('button', { type: 'button', text: 'Salvar', onclick: async () => {
-        const ok = await App.tentar(async () => { await salvar({ nome: nome.value.trim(), frase: frase.value.trim() }, sobre.value.trim() ? sobre.value.trim() + '\n' : ''); return true; }, 'Não foi possível salvar o perfil');
+        const ok = await App.tentar(async () => { await salvar({ nome: nome.value.trim(), frase: frase.value.trim() }); return true; }, 'Não foi possível salvar o perfil');
         if (ok) { dlg.close(); App.toast('Perfil salvo.'); }
       } }),
     ]);
@@ -221,9 +201,10 @@ App.perfil = (() => {
   }
 
   function render(container) {
+    if (/^#\/perfil\/selos/.test(location.hash)) { App.selos.render(container); return; }
     const p = dados();
     const n = App.gamificacao.progresso();
-    const sobre = doc()?.corpo?.trim();
+    const todosSelos = App.selos.todos();
     const capa = imagem(p.capa, '', 'perfil-capa-img');
     const andamento = [...App.livros.todos().filter(d => d.meta.status === 'lendo'), ...App.entretenimento.todos().filter(d => d.meta.status === 'vendo')];
     const capinha = d => el('li', { class: 'vitrine-item' }, App.catalogo.capa(d.meta.capa, d.meta.titulo || d.nome, 'capa'),
@@ -243,8 +224,12 @@ App.perfil = (() => {
       el('div', { class: 'perfil-colunas' },
         el('div', { class: 'perfil-principal' },
           el('section', { class: 'caixa', 'aria-labelledby': 'perfil-equilibrio' }, el('h2', { id: 'perfil-equilibrio', text: 'Equilíbrio' }), radar()),
-          el('section', { class: 'caixa', 'aria-labelledby': 'perfil-sobre' }, el('h2', { id: 'perfil-sobre', text: 'Sobre mim' }),
-            sobre ? App.markdown.render(el('div', { class: 'markdown' }), sobre) : el('p', { class: 'vazio', text: 'Ainda vazio.' })),
+          el('section', { class: 'caixa', 'aria-labelledby': 'perfil-destaques' },
+            el('div', { class: 'caixa-cabecalho' }, el('h2', { id: 'perfil-destaques', text: 'Selos em destaque' }),
+              el('div', { class: 'acoes' },
+                el('button', { type: 'button', class: 'secundario', onclick: App.selos.escolherDestaque }, App.icone('estrela'), ' Escolher destaques'),
+                el('a', { class: 'botao secundario', href: '#/perfil/selos', text: 'Todos os selos' }))),
+            App.selos.vitrine()),
           el('section', { class: 'caixa', 'aria-labelledby': 'perfil-favoritos' }, el('h2', { id: 'perfil-favoritos', text: 'Favoritos' }),
             favoritos().length ? el('ul', { class: 'vitrine' }, favoritos().map(capinha)) : el('p', { class: 'vazio', text: 'Livros, filmes e séries com nota 5 aparecem aqui.' })),
           andamento.length ? el('section', { class: 'caixa', 'aria-labelledby': 'perfil-agora' }, el('h2', { id: 'perfil-agora', text: 'Agora' }),
@@ -253,10 +238,9 @@ App.perfil = (() => {
           el('section', { class: 'caixa', 'aria-label': 'Nível e XP' }, App.gamificacao.cartao({ compacto: true })),
           el('section', { class: 'caixa', 'aria-labelledby': 'perfil-numeros' }, el('h2', { id: 'perfil-numeros', text: 'Números' }),
             el('dl', { class: 'perfil-numeros' }, numeros().map(x => el('div', {}, el('dt', { text: x.rotulo }), el('dd', { text: x.valor }))))),
-          el('section', { class: 'caixa', 'aria-labelledby': 'perfil-selos' }, el('h2', { id: 'perfil-selos', text: `Selos ${selos().filter(s => s.ok).length}/${selos().length}` }),
-            el('ul', { class: 'selos' }, selos().map(s => el('li', { class: 'selo-conquista' + (s.ok ? ' ganho' : ''), title: `${s.nome}: ${s.desc}${s.ok ? '' : ' (ainda não)'}` },
-              el('span', { class: 'selo-icone', 'aria-hidden': 'true' }, App.icone(s.icone)),
-              el('span', {}, el('strong', { text: s.nome }), el('span', { class: 'sr', text: s.ok ? ' (conquistado)' : ' (ainda não)' }), el('span', { class: 'dica', text: s.desc })))))))));
+          el('section', { class: 'caixa', 'aria-labelledby': 'perfil-selos' }, el('h2', { id: 'perfil-selos', text: 'Selos' }),
+            el('p', { class: 'perfil-selos-conta' }, el('strong', { text: todosSelos.filter(x => x.ok).length }), ` de ${todosSelos.length} conquistados`),
+            el('a', { class: 'botao secundario', href: '#/perfil/selos', text: 'Ver todos os selos' })))));
   }
 
   // Botão do cabeçalho (canto superior direito) com a foto.
@@ -273,5 +257,5 @@ App.perfil = (() => {
   }
   App.on('dados', () => desenharBotao());
 
-  return { render, radar, equilibrio, retrato, avatar, editar, desenharBotao };
+  return { render, radar, equilibrio, retrato, avatar, editar, desenharBotao, salvar };
 })();

@@ -3,21 +3,23 @@
 // arquivos .ics importados. Cada agenda é um arquivo Calendario/Agendas/<id>.md com uma linha
 // por compromisso no corpo, legível por humanos e no Obsidian:
 //   - 2026-12-06 14:00 | Futebol · Arsenal x Chelsea · Premier League
-// Os jogos são buscados só quando o usuário clica em "Atualizar" (ESPN e Jolpica-F1, sem chave).
+// Os jogos são buscados só quando o usuário clica em "Atualizar" (ESPN, TheSportsDB e Jolpica-F1, sem chave).
 App.agenda = (() => {
   const { el } = App;
   const PASTA = 'Calendario/Agendas';
   const LINHA = /^- (\d{4}-\d{2}-\d{2})(?: (\d{2}:\d{2}))? \| (.+)$/;
 
+  // espn: id do time na ESPN; sdb: id na TheSportsDB (reserva). A lista de times da ESPN não
+  // aceita ser lida por sites (sem CORS), por isso os ids ficam aqui; os calendários de jogos aceitam.
   const TIMES = [
-    { nome: 'Cruzeiro', busca: /cruzeiro/i, ligas: [['bra.1', 'Brasileirão'], ['bra.copa_do_brazil', 'Copa do Brasil'], ['conmebol.libertadores', 'Libertadores'], ['conmebol.sudamericana', 'Sul-Americana'], ['bra.camp.mineiro', 'Campeonato Mineiro']] },
-    { nome: 'Barcelona', busca: /^barcelona$/i, ligas: [['esp.1', 'La Liga'], ['esp.copa_del_rey', 'Copa do Rei'], ['esp.super_cup', 'Supercopa da Espanha'], ['uefa.champions', 'Champions League']] },
-    { nome: 'Arsenal', busca: /^arsenal$/i, ligas: [['eng.1', 'Premier League'], ['eng.fa', 'FA Cup'], ['eng.league_cup', 'Copa da Liga Inglesa'], ['uefa.champions', 'Champions League']] },
+    { nome: 'Cruzeiro', espn: '2022', sdb: '134294', ligas: [['bra.1', 'Brasileirão'], ['bra.copa_do_brazil', 'Copa do Brasil'], ['conmebol.libertadores', 'Libertadores'], ['conmebol.sudamericana', 'Sul-Americana'], ['bra.camp.mineiro', 'Campeonato Mineiro']] },
+    { nome: 'Barcelona', espn: '83', sdb: '133739', ligas: [['esp.1', 'La Liga'], ['esp.copa_del_rey', 'Copa do Rei'], ['esp.super_cup', 'Supercopa da Espanha'], ['uefa.champions', 'Champions League']] },
+    { nome: 'Arsenal', espn: '359', sdb: '133604', ligas: [['eng.1', 'Premier League'], ['eng.fa', 'FA Cup'], ['eng.league_cup', 'Copa da Liga Inglesa'], ['uefa.champions', 'Champions League']] },
   ];
   const FONTES = {
     f1: { nome: 'Fórmula 1', categoria: 'esporte', fonte: 'Jolpica F1 (api.jolpi.ca)', buscar: buscarF1 },
     nfl: { nome: 'NFL', categoria: 'esporte', fonte: 'ESPN', buscar: buscarNFL },
-    futebol: { nome: `Futebol (${TIMES.map(t => t.nome).join(', ')})`, categoria: 'esporte', fonte: 'ESPN', buscar: buscarFutebol },
+    futebol: { nome: `Futebol (${TIMES.map(t => t.nome).join(', ')})`, categoria: 'esporte', fonte: 'ESPN (reserva: TheSportsDB)', buscar: buscarFutebol },
     vestibulares: { nome: 'Vestibulares, ENEM e SISU (previsões)', categoria: 'vestibular', fonte: 'estimativa do Bit-life com base nos anos anteriores', buscar: gerarVestibulares },
   };
 
@@ -117,29 +119,43 @@ App.agenda = (() => {
     }).filter(Boolean);
   }
 
-  // ---- Futebol (ESPN): acha o id do time pela liga nacional e busca os jogos em cada competição ----
+  // ---- Futebol: ESPN (todas as competições); se ela falhar, TheSportsDB (só o próximo jogo) ----
+  async function jogosESPN(time) {
+    const out = [];
+    const res = await Promise.allSettled(time.ligas.map(([liga]) => json(`https://site.api.espn.com/apis/site/v2/sports/soccer/${liga}/teams/${time.espn}/schedule?fixture=true`)));
+    if (res.every(r => r.status === 'rejected')) throw res[0].reason;
+    res.forEach((r, i) => {
+      for (const e of r.value?.events || []) {
+        const q = doISO(e.date); if (!q) continue;
+        const comp = e.competitions?.[0]?.competitors || [];
+        const casa = comp.find(c => c.homeAway === 'home')?.team?.displayName;
+        const fora = comp.find(c => c.homeAway === 'away')?.team?.displayName;
+        out.push({ id: e.id, ...q, titulo: `Futebol · ${casa && fora ? `${casa} x ${fora}` : e.name} · ${time.ligas[i][1]}` });
+      }
+    });
+    return out;
+  }
+  async function jogosSportsDB(time) {
+    const j = await json(`https://www.thesportsdb.com/api/v1/json/123/eventsnext.php?id=${time.sdb}`);
+    return (j.events || []).map(e => {
+      const q = e.strTimestamp ? doISO(/Z|[+-]\d\d:?\d\d$/.test(e.strTimestamp) ? e.strTimestamp : e.strTimestamp + 'Z') : (e.dateEvent ? { data: e.dateEvent, hora: null } : null);
+      if (!q) return null;
+      const nome = e.strHomeTeam && e.strAwayTeam ? `${e.strHomeTeam} x ${e.strAwayTeam}` : e.strEvent;
+      return { id: 'sdb' + e.idEvent, ...q, titulo: `Futebol · ${nome}${e.strLeague ? ' · ' + e.strLeague : ''}` };
+    }).filter(Boolean);
+  }
   async function buscarFutebol() {
-    const out = []; const vistos = new Set(); const falhas = [];
+    const out = []; const vistos = new Set(); const falhas = []; const reserva = [];
     for (const time of TIMES) {
-      let id = null;
-      try {
-        const j = await json(`https://site.api.espn.com/apis/site/v2/sports/soccer/${time.ligas[0][0]}/teams`);
-        id = (j.sports?.[0]?.leagues?.[0]?.teams || []).map(t => t.team).find(t => time.busca.test(t.displayName) || time.busca.test(t.shortDisplayName || ''))?.id;
-      } catch (e) { console.warn('futebol: lista de times', time.nome, e); }
-      if (!id) { falhas.push(time.nome); continue; }
-      const res = await Promise.allSettled(time.ligas.map(([liga]) => json(`https://site.api.espn.com/apis/site/v2/sports/soccer/${liga}/teams/${id}/schedule?fixture=true`)));
-      res.forEach((r, i) => {
-        for (const e of r.value?.events || []) {
-          if (vistos.has(e.id)) continue;
-          const q = doISO(e.date); if (!q) continue;
-          vistos.add(e.id);
-          const comp = e.competitions?.[0]?.competitors || [];
-          const casa = comp.find(c => c.homeAway === 'home')?.team?.displayName;
-          const fora = comp.find(c => c.homeAway === 'away')?.team?.displayName;
-          out.push({ ...q, titulo: `Futebol · ${casa && fora ? `${casa} x ${fora}` : e.name} · ${time.ligas[i][1]}` });
-        }
-      });
+      let jogos = [];
+      try { jogos = await jogosESPN(time); } catch (e) { console.warn('futebol: ESPN', time.nome, e); }
+      if (!jogos.length) {
+        try { jogos = await jogosSportsDB(time); if (jogos.length) reserva.push(time.nome); } catch (e) { console.warn('futebol: TheSportsDB', time.nome, e); }
+      }
+      if (!jogos.length) falhas.push(time.nome);
+      for (const j of jogos) if (!vistos.has(j.id)) { vistos.add(j.id); out.push(j); }
     }
+    if (reserva.length) App.toast(`A ESPN não respondeu para ${reserva.join(', ')}: trouxe só o próximo jogo pela TheSportsDB.`);
     if (falhas.length) App.toast(`Não encontrei os jogos de: ${falhas.join(', ')}.`, 'erro');
     return out;
   }

@@ -150,7 +150,8 @@ App.desafios = (() => {
   }
   const venci = (d, linhas) => linhas.length >= 2 && encerrado(d, linhas) && linhas.find(p => p.eu)?.pos === 1;
   // Usado pelo selo "Campeão" do Perfil.
-  const vitorias = () => todos().filter(doc => { const d = info(doc); return venci(d, placar(d)); }).length;
+  const vencidos = () => todos().filter(doc => { const d = info(doc); return venci(d, placar(d)); });
+  const vitorias = () => vencidos().length;
 
   // ---------------- link ----------------
   function pacote(d) {
@@ -548,5 +549,5 @@ App.desafios = (() => {
         el('p', { text: 'Um organizador de tarefas, estudo, hábitos, leitura, filmes e finanças. Tudo fica numa pasta do seu computador: sem conta, sem cadastro e sem mandar seus dados para a internet.' }))].filter(Boolean));
   }
 
-  return { render, renderConvite, todos, vitorias, link, novo, lerCorpo, montarCorpo, classificar };
+  return { render, renderConvite, todos, vitorias, vencidos, link, novo, lerCorpo, montarCorpo, classificar };
 })();

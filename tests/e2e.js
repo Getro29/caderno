@@ -43,6 +43,10 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
     { l: 'Naruto', y: 2002, qid: 'tvSeries', id: 'tt0409591', s: 'Junko Takeuchi', i: { imageUrl: 'https://capas.exemplo/naruto-imdb._V1_.jpg' } },
     { l: 'Naruto Video Game', y: 2005, qid: 'videoGame', id: 'tt1' }] })));
   await page.route('https://api.tvmaze.com/**', r => r.fulfill(json([])));
+  // Reserva do futebol: só o Cruzeiro fica sem jogos na ESPN simulada e cai na TheSportsDB.
+  await page.route('https://www.thesportsdb.com/**', r => r.fulfill(json(r.request().url().includes('id=134294')
+    ? { events: [{ idEvent: '9', strHomeTeam: 'Cruzeiro', strAwayTeam: 'Atlético-MG', strLeague: 'Brazilian Serie A', strTimestamp: hojeAs(22, 0).toISOString().slice(0, 19) }] }
+    : { events: null })));
   await page.route('https://itunes.apple.com/**', r => r.fulfill(json({ results: [] })));
   await page.route('https://capas.exemplo/**', r => r.fulfill({ status: 200, contentType: 'image/png', body: png }));
   // Agendas esportivas simuladas: um jogo hoje às 23:00 (para o sino e o briefing).
@@ -427,7 +431,26 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   await page.getByText('Encerrado. Venceu: você.').waitFor();
   await page.locator('.selo.campeao').waitFor();
   await page.goto(URL + '#/perfil');
-  await page.locator('.selo-conquista.ganho', { hasText: 'Campeão' }).waitFor();
+  // selos: o desafio vencido vira um selo com o nome dele; escolho ele para o destaque do perfil
+  await page.getByRole('link', { name: 'Todos os selos', exact: true }).click();
+  await page.getByRole('heading', { name: 'Selos', level: 1 }).waitFor();
+  await page.locator('.selo-item.ganho', { hasText: 'Quem termina O Cortiço primeiro?' }).waitFor();
+  await page.locator('.selo-item:not(.ganho)', { hasText: '20 min sem parar' }).waitFor();
+  await page.evaluate(() => App.diario.somarEstudo(App.hoje(), 25, 25.4));
+  await page.locator('.selo-item.ganho', { hasText: '20 min sem parar' }).waitFor();
+  await page.locator('.selo-item:not(.ganho)', { hasText: 'estudar 40 minutos' }).waitFor();
+  await page.getByRole('button', { name: 'Escolher destaques' }).click();
+  while (await page.locator('.escolha-selo input:checked').count()) await page.locator('.escolha-selo input:checked').first().uncheck();
+  await page.locator('.escolha-selo', { hasText: 'Quem termina O Cortiço primeiro?' }).locator('input').check();
+  await page.locator('.escolha-selo', { hasText: '20 min sem parar' }).locator('input').check();
+  await page.getByRole('button', { name: 'Salvar' }).click();
+  await page.getByText('Destaques salvos.').waitFor();
+  await page.goto(URL + '#/perfil');
+  await page.locator('.selos-destaque-lista li').nth(1).waitFor();
+  if (await page.locator('.selos-destaque-lista li').count() !== 2) throw new Error('destaque do perfil não respeitou a escolha: ' + await page.locator('.selos-destaque-lista').innerText());
+  const perfilMd = await page.evaluate(() => App.store.obter('Caderno/perfil.md').meta.selos_destaque);
+  if (!Array.isArray(perfilMd) || !perfilMd.includes('estudo-20') || !perfilMd.some(x => /^desafio-d-/.test(x))) throw new Error('selos_destaque não gravado: ' + JSON.stringify(perfilMd));
+  if (await page.getByRole('heading', { name: 'Sobre mim' }).count()) throw new Error('Sobre mim ainda aparece no perfil');
 
   // lista de filmes: filmes novos entram em "Quero ver"; só conta o que for visto depois de entrar
   await page.goto(URL + '#/desafios');
@@ -496,6 +519,8 @@ const hojeAs = (h, m) => { const d = new Date(); d.setHours(h, m, 0, 0); return 
   if (!/- socializar/.test(arquivos[`Diario/${hojeISO}.md`] || '')) throw new Error('Socializar não gravado no diário');
   if (!/metricas:\n  - Bíblia\n  - Videogame/.test(arquivos['Caderno/habitos.md'] || '')) throw new Error('métricas não gravadas em Caderno/habitos.md');
   if (!/!\[\[revolucao-francesa-\w+\.png\]\]/.test(arquivos['Estudo/Cadernos/revolucao-francesa.md'] || '')) throw new Error('imagem do caderno não registrada');
+  const fut = arquivos['Calendario/Agendas/futebol.md'] || '';
+  if (!/Arsenal x Chelsea · Premier League/.test(fut) || !/Cruzeiro x Atlético-MG · Brazilian Serie A/.test(fut)) throw new Error('jogos de futebol (ESPN + reserva) não gravados:\n' + fut);
   console.log('ERROS:', erros.length ? erros : 'nenhum');
   await browser.close();
   process.exit(erros.length ? 1 : 0);

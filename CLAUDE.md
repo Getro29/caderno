@@ -61,7 +61,8 @@ pelo usuário, compatível com um vault do Obsidian.
   - `js/catalogo.js` consulta catálogos públicos (Google Books, Open Library, IMDb, iTunes,
     TVmaze, AniList, Jikan) em "Buscar capa" / "Completar capas", enviando apenas o título.
   - `js/agenda.js` baixa calendários esportivos em "Buscar/Atualizar" (Jolpica F1 em
-    api.jolpi.ca; ESPN em site.api.espn.com para NFL e futebol). Nada do usuário é enviado. Capas são guardadas como URL no campo `capa`.
+    api.jolpi.ca; ESPN em site.api.espn.com para NFL e futebol; TheSportsDB em www.thesportsdb.com, chave pública
+    de teste `123`, como reserva do futebol). Nada do usuário é enviado. Capas são guardadas como URL no campo `capa`.
   - `js/cadernos.js`: vídeo do YouTube (youtube-nocookie.com) ou Vimeo só é embutido quando a
     pessoa clica em "Carregar vídeo aqui"; antes disso é só um cartão com link.
   - Link compartilhado (`#/ver?d=...`) ou de desafio (`#/desafio?d=...`): quem o abre carrega a capa (URL pública) que veio no link.
@@ -91,6 +92,7 @@ js/
   notas.js            # Notas de estudo (aba #/estudo/notas; #/notas redireciona)
   cadernos.js         # Cadernos de estudo (aba #/estudo/cadernos): temas, texto, vídeos, imagens
   compartilhar.js     # link de compartilhar (#/ver?d=…): livro lendo/lido, filme/série visto, nível ≥ 2
+  selos.js            # catálogo de selos, página #/perfil/selos e escolha dos selos em destaque do Perfil
   desafios.js         # Desafios (#/desafios) e link recebido (#/desafio?d=…): corrida de leitura/série, lista de filmes
   catalogo.js         # busca de capas/dados em catálogos públicos + importação CSV Goodreads/Letterboxd
   livros.js           # página "Leitura" (App.livros; arquivos em Livros/, rota #/leitura)
@@ -171,10 +173,11 @@ Campos obrigatórios por tipo (`tipo` sempre presente para identificar o arquivo
   Excluir move o `.md` **e** a imagem para `.lixeira/`.
 - **agenda:** `tipo, nome, categoria (esporte|vestibular|importado), fonte, atualizado, mostrar`
   — corpo: uma linha por compromisso `- AAAA-MM-DD HH:MM | título` (hora opcional), hora local.
-- **diario:** `tipo, data, habitos (lista de slugs marcados: hábitos E métricas), sono_horas, humor (1–5), estudo_minutos`.
+- **diario:** `tipo, data, habitos (lista de slugs marcados: hábitos E métricas), sono_horas, humor (1–5), estudo_minutos, estudo_sem_parar_min`
+  (maior trecho do temporizador sem apertar Pausar naquele dia; base dos selos de estudo).
   Formato antigo: `socializou: true` conta como `socializar` marcado (mantido coerente ao alternar).
-- **perfil** (`Caderno/perfil.md`): `tipo, nome, frase, foto, capa (caminhos em Caderno/imagens/ ou null), atualizado`
-  — corpo = "Sobre mim". Trocar/tirar imagem move a antiga para `.lixeira/`.
+- **perfil** (`Caderno/perfil.md`): `tipo, nome, frase, foto, capa (caminhos em Caderno/imagens/ ou null), selos_destaque
+  (lista de ids de selos, até 6), atualizado` — corpo = antigo "Sobre mim" (não aparece mais na tela, mas é preservado). Trocar/tirar imagem move a antiga para `.lixeira/`.
 - **config_habitos** (`Caderno/habitos.md`): `tipo, habitos, metricas`. `habitos` dão XP (padrão Leitura,
   Dieta do dia, Exercício, Socializar); `metricas` só acompanham, sem XP (padrão Bíblia). Slug do nome é a
   chave no diário, então mover entre as listas não perde histórico. Arquivo antigo sem `metricas` é
@@ -221,13 +224,20 @@ Definida pelo usuário: **XP vem dos hábitos do check-in diário.**
 
 ## Identidade visual
 
+- Decisão do usuário (v6): **estética retrô anos 80 (anime)**, sem "cara de IA": nada de degradê suave, sombra
+  borrada, vidro fosco/desfoque ou cantos muito redondos. Contornos de tinta (`--contorno`, 2 px), sombras duras
+  deslocadas (`--sombra: 4px 4px 0`), cantos de 2–4 px, títulos condensados em itálico caixa-alta
+  (`--fonte-titulo`: Bahnschrift no Windows) com sombra vermelha, abas e selo de nível inclinados (`skewX`),
+  cabeçalho preto com filete vermelho, diálogos com barra de título preta, barras de progresso listradas
+  (`--listras`), fundo com retícula de pontos, capas/retratos com faixas vermelhas de borda dura. A camada fica no
+  fim de `css/estilo.css` ("Estética retrô anos 80"). Não usar a fonte Inter.
 - Paleta **preto, vermelho e branco** nos dois temas (claro e escuro); o vermelho é o destaque
-  (`--primaria`: `#c8102e` no claro, `#ff4d5e` no escuro). Preenchimentos com texto branco usam
-  `--gradiente` (vermelho fixo `#d1142c → #7a0a15`); sombras coloridas usam `--brilho`. Contrastes AA conferidos.
+  (`--primaria`: `#c8102e` no claro, `#ff4d5e` no escuro, para texto). Botões e preenchimentos com texto branco usam
+  o vermelho chapado `#c8102e` (`--gradiente` virou cor sólida; `--brilho` é transparente). Contrastes AA conferidos.
 - Logo: cápsula de remédio inclinada, metade vermelha e metade branca, com contorno preto
   (`.marca-logo` em CSS e o favicon SVG no `index.html`). Nome "BIT-LIFE" em caixa alta, peso 900, itálico.
   Inspiração na estética de anime dos anos 80, sem copiar desenho, texto ou logo de obra existente.
-- Perfil inspirado em perfil de jogo (capa larga, foto, nível, selos, vitrine); Início com retrato
+- Perfil inspirado em perfil de jogo (capa larga, foto, nível, selos em destaque, vitrine); Início com retrato
   + gráfico de radar, inspirado em painéis de "gamify your life".
 
 ## Gráfico de equilíbrio (radar)
@@ -382,6 +392,18 @@ filmes entram como **"quem vê mais da lista"** até o prazo (empate: quem chego
   placar e um botão para abrir a pasta; com pasta, "Entrar no desafio" ou "Atualizar o placar" (fica o resultado mais avançado).
 - Nome do perfil é obrigatório para mandar o link (é o que aparece no placar dos amigos).
 - Menu do topo: com 12 itens, só ícones abaixo de 1520 px.
+
+**Já feito (v6):**
+- Futebol no calendário: a lista de times da ESPN não aceita ser lida por sites (sem CORS), e era por ela que o app
+  achava o time; por isso Cruzeiro, Arsenal e Barcelona "sumiam". Agora os ids ficam em `TIMES` (`espn`, `sdb`) e o
+  calendário de jogos (com CORS) é lido direto. Se a ESPN não trouxer nada, a TheSportsDB (chave `123`) traz o
+  próximo jogo. A ESPN recusa o Chromium "headless" (403): testes de verdade só num Chrome normal.
+- Selos (`App.selos`, página `#/perfil/selos`): livros lidos (1–100), filmes (1–250), séries e animes (1–50), dias
+  seguidos de cada hábito que dá XP (3–365, maior sequência de todos os tempos), estudo sem parar (20 a 180 min, de
+  20 em 20), gerais (primeiro passo, níveis, Enturmado) e **um selo por desafio vencido, com o nome do desafio e o
+  ícone de troféu padrão**. Tudo calculado na hora; selos não dão XP.
+- Perfil: "Sobre mim" virou **Selos em destaque** (o usuário escolhe até 6; sem escolha, mostra os mais recentes).
+- Visual retrô anos 80 em todo o site (ver Identidade visual).
 
 **Pendente / próximos passos:**
 0. Confirmar no navegador do usuário que as buscas de jogos (ESPN/Jolpica) e de capas

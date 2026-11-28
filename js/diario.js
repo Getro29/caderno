@@ -117,8 +117,12 @@ App.diario = (() => {
   // Socializar: métrica à parte dos hábitos (não muda o XP, que vem só dos hábitos).
   const socializou = data => fez(data, 'Socializar');
 
-  function somarEstudo(data, minutos) {
-    return atualizar(data, m => ({ estudo_minutos: (Number(m.estudo_minutos) || 0) + Math.round(minutos) }), {});
+  // semParar: o trecho mais longo da sessão sem pausar; o diário guarda o maior do dia (selos de estudo).
+  function somarEstudo(data, minutos, semParar = 0) {
+    return atualizar(data, m => ({
+      estudo_minutos: (Number(m.estudo_minutos) || 0) + Math.round(minutos),
+      ...(semParar > 0 ? { estudo_sem_parar_min: Math.max(Number(m.estudo_sem_parar_min) || 0, Math.floor(semParar)) } : {}),
+    }), {});
   }
 
   return { caminho, obter, meta, atualizar, habitos, salvarHabitos, chave, feitos, fez, alternar, sequencia, resumoMes, diasDoMes, somarEstudo, socializou, metricas, salvarMetricas, feitosXP };

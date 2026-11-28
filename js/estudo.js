@@ -26,18 +26,22 @@ App.estudo = (() => {
     return h ? `${h}:${z(m)}:${z(ss)}` : `${z(m)}:${z(ss)}`;
   };
 
+  // bloco: o trecho mais longo sem pausar nesta sessão (ms). Pausar fecha o trecho atual.
+  const fecharBloco = (ms = Date.now() - tempo.inicio) => { if (tempo.inicio) tempo.bloco = Math.max(tempo.bloco || 0, ms); };
   function iniciar(totalMs, rotulo) {
-    tempo = { total: totalMs, acumulado: 0, inicio: Date.now(), rotulo, ativo: true };
+    tempo = { total: totalMs, acumulado: 0, inicio: Date.now(), rotulo, ativo: true, bloco: 0 };
     guardar(); tick();
   }
-  function pausar() { if (!rodando()) return; tempo.acumulado = decorrido(); tempo.inicio = null; guardar(); tick(); }
+  function pausar() { if (!rodando()) return; fecharBloco(); tempo.acumulado = decorrido(); tempo.inicio = null; guardar(); tick(); }
   function continuar() { if (rodando() || !tempo.ativo) return; tempo.inicio = Date.now(); guardar(); tick(); }
   function zerar() { tempo = { ...tempo, acumulado: 0, inicio: null, ativo: false }; guardar(); tick(); }
   async function concluir(automatico = false) {
     const min = Math.round(decorrido() / 60000);
-    tempo = { ...tempo, acumulado: 0, inicio: null, ativo: false }; guardar();
+    fecharBloco();
+    const semParar = (tempo.bloco || 0) / 60000;
+    tempo = { ...tempo, acumulado: 0, inicio: null, ativo: false, bloco: 0 }; guardar();
     if (min > 0) {
-      await App.tentar(() => App.diario.somarEstudo(App.hoje(), min), 'Não foi possível registrar o tempo');
+      await App.tentar(() => App.diario.somarEstudo(App.hoje(), min, semParar), 'Não foi possível registrar o tempo');
       App.gamificacao.registrarEvento('estudo_concluido', App.diario.caminho(App.hoje()), { minutos: min });
     }
     App.toast(automatico ? `Tempo esgotado${tempo.rotulo ? ': ' + tempo.rotulo : ''}! ${min} min registrados.` : `${min} min de estudo registrados.`);
@@ -59,7 +63,7 @@ App.estudo = (() => {
 
   // Atualiza todos os mostradores (página Estudo e selo do cabeçalho) a cada segundo.
   function tick() {
-    if (tempo.ativo && rodando() && restante() <= 0) { tempo.acumulado = tempo.total; tempo.inicio = null; bip(); concluir(true); return; }
+    if (tempo.ativo && rodando() && restante() <= 0) { fecharBloco(tempo.total - tempo.acumulado); tempo.acumulado = tempo.total; tempo.inicio = null; bip(); concluir(true); return; }
     const texto = fmt(tempo.ativo ? restante() : tempo.total);
     for (const n of document.querySelectorAll('[data-cronometro]')) n.textContent = texto;
     for (const b of document.querySelectorAll('[data-cronometro-barra]')) b.style.width = `${tempo.ativo ? Math.min(100, (decorrido() / tempo.total) * 100) : 0}%`;
